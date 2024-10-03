@@ -15,6 +15,7 @@ from astropy.constants import kpc, au
 from astropy.coordinates import CartesianRepresentation, CartesianDifferential
 from astropy.coordinates.matrix_utilities import rotation_matrix, matrix_product, matrix_transpose
 from numba import njit
+import astropy
 
 # load dust map sfd
 from dustmaps.sfd import SFDQuery
@@ -49,10 +50,10 @@ def parallax_consistency(parallax, parallax_error, implied_parallax, implied_par
 
 def is_fast(implied_radial_velocity, lower_limit = 800, upper_limit = 3500):
     """
-    Check if the star is a fast star based on the implied radial velocity
+    Check if the star is a fast star based on the implied total velocity
 
     input:
-        implied_radial_velocity: implied radial velocity in km/s
+        implied_total_velocity: implied total velocity in km/s
 
     output:
         bool: True if the star is fast
@@ -111,7 +112,7 @@ def check_extinction(A_G, limit = 1.5):
 
     """
     # check if the star is affected by extinction
-    return A_G > limit
+    return A_G < limit
 
 
 def is_main_sequence(bp_rp, M_g):
@@ -128,7 +129,7 @@ def is_main_sequence(bp_rp, M_g):
 
     """
     # check if the star is in the main sequence
-    return np.logical_and(-1.5 < M_g - 4.3 * bp_rp, M_g - 4.3 * bp_rp < 1.5)
+    return np.logical_and(-1.5 < M_g - 4.3 * bp_rp, M_g - 4.3 * bp_rp < 2.5)
 
 
 
@@ -144,7 +145,7 @@ def compute_absolute_magntiude(gmag, distance, extinction):
     output:
         float: absolute magnitude
     """
-    return gmag - 5 * np.log10(distance * 1e3) + 5 - extinction
+    return gmag - 5 * np.log10(distance) + 5 - extinction
 
 
 
@@ -179,9 +180,9 @@ def extinction_correction(catalog):
     catalog['A_bp'] = A_bp
     catalog['A_rp'] = A_rp
     catalog['G_corr'] = catalog['phot_g_mean_mag'] - A_G
-    catalog['bp_rp_corr'] = catalog['phot_bp_mean_mag'] - A_bp 
-    catalog['bp_rp_corr'] = catalog['phot_rp_mean_mag'] - A_rp
-
+    catalog['phot_bp_mean_mag_corr'] = catalog['phot_bp_mean_mag'] - A_bp 
+    catalog['phot_rp_mean_mag_corr'] = catalog['phot_rp_mean_mag'] - A_rp
+    catalog['bp_rp_corr'] = catalog['phot_bp_mean_mag_corr'] - catalog['phot_rp_mean_mag_corr']
 
     return catalog
 
@@ -200,7 +201,7 @@ def is_blue(bp_rp, limit = 0.5):
     """
     return bp_rp < limit
 
-def is_in_pixels(ra_deg, dec_deg):
+def is_in_pixels_radec(ra_deg, dec_deg):
     """
     Given arrays of RA and Dec in degrees, returns a boolean array indicating
     whether each source is within the specified HEALPix pixels at NSIDE=3 (ring scheme).
@@ -214,6 +215,7 @@ def is_in_pixels(ra_deg, dec_deg):
 
     Returns:
     - in_pixels: boolean array, True if the source is in the specified pixels
+    - pix_nums: array-like, HEALPix pixel number for each source
     """
     nside = 3  # NSIDE corresponding to the HEALPix level with the given pixels
 
@@ -235,16 +237,101 @@ def is_in_pixels(ra_deg, dec_deg):
     pixels_set = set(pixels)  # Convert to a set for faster lookup
 
     # Convert RA and Dec to theta (colatitude) and phi (longitude) in radians
-    theta = np.radians(90.0 - dec_deg)  # Colatitude in radians
-    phi = np.radians(ra_deg)            # Longitude in radians
+    theta = np.radians(90 - dec_deg)  # Colatitude in radians
+    phi = np.radians(-ra_deg)            # Longitude in radians
 
     # Compute the HEALPix pixel number for each coordinate (ring ordering)
     pix_nums = hp.ang2pix(nside, theta, phi, nest=False)
+    #pix_nums = hp.ang2pix(nside,np.pi*(90-dec_deg)/180,np.pi*ra_deg/180)
+    # Check if each pixel number is in the specified list of pixels
+    in_pixels = np.isin(pix_nums, list(pixels_set))
+
+    return in_pixels, pix_nums
+
+def is_in_pixels_lb(l, b, nside = 3):
+    """
+    Given arrays of l and b in degrees, returns a boolean array indicating
+    whether each source is within the specified HEALPix pixels at NSIDE=3 (ring scheme).
+
+    Pixels: 0 to 19, 22 to 31, 35 to 42, 46 to 55, 58 to 62, 65, 66,
+    69 to 73, 78, 82 to 85, 93 to 96, 101, 102, 103, and 107 in ring scheme.
+
+    Parameters:
+    - l: array-like, l in degrees
+    - b: array-like, l in degrees
+
+    Returns:
+    - in_pixels: boolean array, True if the source is in the specified pixels
+    - pix_nums: array-like, HEALPix pixel number for each source
+    """
+    
+    # Expand the specified pixel ranges into a list
+    pixels = np.concatenate([
+        np.arange(0, 20),          # 0–19
+        np.arange(22, 32),         # 22–31
+        np.arange(35, 43),         # 35–42
+        np.arange(46, 56),         # 46–55
+        np.arange(58, 63),         # 58–62
+        [65, 66],
+        np.arange(69, 74),         # 69–73
+        [78],
+        np.arange(82, 86),         # 82–85
+        np.arange(93, 97),         # 93–96
+        [101, 102, 103],
+        [107]
+    ])
+    pixels_set = set(pixels)  # Convert to a set for faster lookup
+
+    # Compute the HEALPix pixel number for each coordinate (ring ordering)
+    pix_nums = hp.ang2pix(nside, l, b, nest=False, lonlat=True)
 
     # Check if each pixel number is in the specified list of pixels
     in_pixels = np.isin(pix_nums, list(pixels_set))
 
-    return in_pixels
+    return in_pixels, pix_nums
+
+
+def is_in_pixels_test(ra, dec):
+    # Convert RA and Dec to radians
+    ra = np.deg2rad(ra)
+    dec = np.deg2rad(dec)
+
+    # Wrap RA around to [-π, π] (like you do for Mollweide or Aitoff)
+    ra = np.remainder(ra + 2 * np.pi, 2 * np.pi)
+    ra = ra - np.pi
+
+    # Invert RA by multiplying by -1
+    ra = -ra
+
+    # Convert to HEALPix indices
+    nside = 3
+
+        # Expand the specified pixel ranges into a list
+    pixels = np.concatenate([
+        np.arange(0, 20),          # 0–19
+        np.arange(22, 32),         # 22–31
+        np.arange(35, 43),         # 35–42
+        np.arange(46, 56),         # 46–55
+        np.arange(58, 63),         # 58–62
+        [65, 66],
+        np.arange(69, 74),         # 69–73
+        [78],
+        np.arange(82, 86),         # 82–85
+        np.arange(93, 97),         # 93–96
+        [101, 102, 103],
+        [107]
+    ])
+    pixels_set = set(pixels)  # Convert to a set for faster lookup
+
+    # Compute the HEALPix pixel number for each coordinate (ring ordering)
+    pix_nums = hp.ang2pix(nside, ra, dec, nest=False, lonlat=False)
+
+    # Check if each pixel number is in the specified list of pixels
+    in_pixels = np.isin(pix_nums, list(pixels_set))
+
+    return in_pixels, pix_nums
+
+
 
 def outside_object(ra, dec, ra_obj, dec_obj, ang_dist_deg):
     """
@@ -255,16 +342,17 @@ def outside_object(ra, dec, ra_obj, dec_obj, ang_dist_deg):
     coords_obj = SkyCoord(ra=ra_obj, dec=dec_obj, unit=(u.degree, u.degree), frame='icrs')
     return coords.separation(coords_obj).degree > ang_dist_deg
 
+def is_HVS(data):
+    """
+    Check if the star is a HVS based on the criteria from Verberne et al. 2024
 
-if __name__ == "__main__":
+    input:
+        data: Gaia catalog, must contain the columns ra, dec, pmra, pmdec, VR,
+            implied_parallax, implied_parallax_error, rgeo, b_rgeo_x, B_rgeo_xa
 
-    # path to the data, data must include implied distance and radial velocity
-    path_data = '/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/200pc/bailer-jones_implied/implied_vr_d_bj.fits'
-    output_path = '/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/filtered_stars/without_healpix_criteria'
-
-    # load the data
-    data = Table.read(path_data)
-
+    output:
+        astropy.table.Table: catalog with stars that git the HVS criteria
+    """
     # start time
     start = time.time()
 
@@ -287,7 +375,7 @@ if __name__ == "__main__":
 
     # check if the star is fast
     print('Checking if the star is fast')
-    data = data[is_fast(data['VR'])]
+    data = data[is_fast(data['VGCR'])] # could be changed to VR if needed
     print('Number of fast stars:', len(data))
 
     # check if the astrometry is decent
@@ -297,12 +385,12 @@ if __name__ == "__main__":
     print('Number of stars with decent astrometry:', len(data))
 
     # define implied distance and distance error
-    data['implied_distance'] = 1/data['implied_parallax']
-    data['implied_distance_error'] = data['implied_parallax_error']/data['implied_parallax']**2
+    data['implied_distance'] = 1/(data['implied_parallax']/1e3) # implied parallax comes in mas, multiplied by 1e3 to get arcsec, therefore the distance is in pc
+    data['implied_distance_error'] = 1e-3*data['implied_parallax_error']/((data['implied_parallax']*1e-3)**2)
 
     # check the consistency of the distance, note that if querying from Gaia database this must change as column names are different
     print('Checking distance consistency')
-    data['distance_consistency'] = distance_consistency(data['implied_distance'], data['rgeo'], data['implied_distance_error'], data['B_rgeo_xa'] - data['b_rgeo_x'])
+    data['distance_consistency'] = distance_consistency(data['implied_distance'], data['r_med_geo'], data['implied_distance_error'], (data['r_lo_geo'] - data['r_hi_geo'])/2)
     # keep only consistent distances
     data = data[data['distance_consistency']]
     print('Number of consistent distances:', len(data))
@@ -320,13 +408,24 @@ if __name__ == "__main__":
     # check if the star is in the main sequence
     print('Checking if the star is in the main sequence')
     # keep only stars in the main sequence
-    data = data[is_main_sequence(data['bp_rp_corr'], data['Gmag'])]
+    data = data[is_main_sequence(bp_rp = data['bp_rp_corr'], M_g = data['Gmag'])]
     print('Number of stars in the main sequence:', len(data))
 
     # check if the star is in the specified pixels
     print('Checking if the star is in the specified pixels')
     # keep only stars in the specified pixels
-    data = data[is_in_pixels(data['ra'], data['dec'])]
+    #data = data[is_in_pixels(data['ra'], data['dec'])]
+    #is_in_pixels, pix_nums = is_in_pixels_radec(data['ra'], data['dec'])
+    #is_in_pixels, pix_nums = is_in_pixels_lb(data['l'], data['b'])
+    is_in_pixels, pix_nums = is_in_pixels_test(data['ra'], data['dec'])
+    data['healpix_nside_3'] = pix_nums
+    #not_in_pixels = np.invert(is_in_pixels)
+    #data_not_in_pixels = data[not_in_pixels]
+    #print('Number of stars not in the specified pixels:', len(data_not_in_pixels))
+    #data_not_in_pixels.write('/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/not_in_pixels.fits', format = 'fits', overwrite=True)
+    data = data[is_in_pixels]
+    # save the ones that are not in the specified pixels
+
     print('Number of stars in the specified pixels:', len(data))
 
     # check if the star is far from the LMC
@@ -342,12 +441,30 @@ if __name__ == "__main__":
     print('Number of stars far from the LMC and SMC:', len(data))
 
     #  save the data
-    print('Saving the data to:', output_path + '/filtered_stars_noHP.fits')
-    data.write(os.path.join(output_path, 'filtered_stars_noHP.fits'), overwrite=True)
+    #print('Saving the data to:', output_path + '/filtered_stars_noHP.fits')
+    #data.write(os.path.join(output_path, 'filtered_stars_noHP.fits'), overwrite=True)
     
     # print time it took to run the script
     print('Time it took to run the script:', time.time()-start, 'seconds')
     print('Done!')
+    return data
+
+if __name__ == "__main__":
+
+    # path to the data, data must include implied distance and radial velocity
+    path_data = '/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/200pc/bailer-jones_implied/implied_vr_d_bj.fits'
+    output_path = '/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/filtered_stars/without_healpix_criteria'
+
+    # load the data
+    data = Table.read(path_data)
+
+    # check if the star is a HVS
+    data = is_HVS(data)
+
+    #  save the data
+    print('Saving the data to:', output_path + '/filtered_stars_noHP.fits')
+    data.write(os.path.join(output_path, 'filtered_stars_noHP.fits'), overwrite=True)
+    
 
 
 
