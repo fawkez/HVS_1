@@ -14,7 +14,7 @@ import astropy
 
 
 
-def query(HEALPix_pixel, nside = 3, login = False, username = '', password = '', nested = True): #target_name must be the source id of the star to study
+def query(HEALPix_pixel, nside = 4, login = False, username = '', password = '', nested = True): #target_name must be the source id of the star to study
                         #returns a panda DataFrame with the required data to study cluster membership
                         #if the data is not present in the folder a gaia query is performed
         
@@ -83,7 +83,7 @@ def query(HEALPix_pixel, nside = 3, login = False, username = '', password = '',
         r['parallax_corrected'] = r['parallax']-r['zpvals']
 
         #external query for geometrical distances
-        job2 = Gaia.launch_job_async("SELECT source_id, r_med_geo, r_lo_geo, r_hi_geo"
+        job2 = Gaia.launch_job_async("SELECT source_id, r_med_geo, r_lo_geo, r_hi_geo, r_med_photogeo, r_lo_photogeo, r_hi_photogeo"
         #    #-- From Gaia EDR3
             " FROM external.gaiaedr3_distance"
         #    #-- Select only valid points
@@ -104,35 +104,16 @@ if __name__ == '__main__':
     output_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/replicated_candidates_by_healpix"
     gaia_catalogs_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/gaia_by_healpix"
 
-    # Define the HEALPix pixel number and NSIDE parameter
-    healpix_pixel = 100
-    nside = 3
+    # Define the NSIDE parameter, for this Sill used 3 but I will use 4
+    nside = 4
 
     # read gaia database credentials from file
     with open("/Users/mncavieres/Documents/2024-2/HVS/gaia_credentials.txt", "r") as f:
         username = f.readline().strip()
         password = f.readline().strip()
-
-    # Define the healpix pixels to be queried
-    # Expand the specified pixel ranges into a list
-    pixels = np.concatenate([
-        np.arange(0, 20),          # 0–19
-        np.arange(22, 32),         # 22–31
-        np.arange(35, 43),         # 35–42
-        np.arange(46, 56),         # 46–55
-        np.arange(58, 63),         # 58–62
-        [65, 66],
-        np.arange(69, 74),         # 69–73
-        [78],
-        np.arange(82, 86),         # 82–85
-        np.arange(93, 97),         # 93–96
-        [101, 102, 103],
-        [107]
-    ])
-
-    HVS_counter = 0
+        
     # Loop over the pixels
-    for healpix_pixel in tqdm(np.arange(0, 109)):
+    for healpix_pixel in tqdm(np.arange(0, 192)):
         print(f"Processing HEALPix pixel {healpix_pixel}")
 
         # Check if the data is already downloaded

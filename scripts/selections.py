@@ -47,6 +47,22 @@ def parallax_consistency(parallax, parallax_error, implied_parallax, implied_par
     return parallax_diff < sigma * parallax_diff_error
 
 
+def good_parallax(parallax, parallax_error, sigma = 5):
+    """
+    Check if the parallax is good based on the error
+
+    input:
+        parallax: observed parallax in mas
+        parallax_error: observed parallax error in mas
+        sigma: number of standard deviations to consider the parallax good
+    output:
+        bool: True if the parallax is good
+
+    """
+    # check if the parallax is good
+    return np.abs(parallax/parallax_error) > sigma
+
+
 
 def is_fast(implied_radial_velocity, lower_limit = 800, upper_limit = 3500):
     """
@@ -97,6 +113,79 @@ def distance_consistency(implied_distance, bailer_jones_distance, implied_distan
     distance_diff_error = np.sqrt(bailer_jones_distance_error**2 + implied_distance_error**2)
     return distance_diff < sigma * distance_diff_error
 
+def distance_consistency_sill(implied_distance, implied_distance_error,  r_med_geo,  r_lo_geo, r_hi_geo, sigma = 2):
+
+    """
+    Check that the implied distances are consistent with the photogeometric ones. As a
+    threshold we use 2sigma, where we use the 16th and 84th percentiles from
+    Bailer-Jones et al. (2021) as the negative and positive 1sigma estimates
+    for the posterior respectively.
+
+    Therefore, the function handles asymmetric uncertainties by checking whether
+    the distance difference is positive or negative and using different values accordingly.
+
+    input:
+        implied_distance: implied distance in pc
+        implied_distance_error: implied distance error in pc
+        r_med_geo: median distance in pc
+        r_lo_geo: 16th percentile distance in pc
+        r_hi_geo: 84th percentile distance in pc
+        sigma: number of standard deviations to consider the distance consistent
+
+    output:
+        bool: True if the distance is consistent with the implied distance
+    """
+
+    # compute the difference between the implied distance and the median distance
+    distance_diff =  implied_distance - r_med_geo
+
+    # element-wise conditional handling for distance_diff < 0
+    distance_diff_error = np.where(distance_diff < 0, r_med_geo - r_lo_geo , r_hi_geo- r_med_geo)
+
+    # compute the general distance error
+    distance_error_general = np.sqrt(implied_distance_error**2 + distance_diff_error**2)
+
+    return np.abs(distance_diff) < sigma * distance_error_general
+
+def distance_consistency_sill_parallax(implied_parallax, implied_parallax_error,  r_med_geo,  r_lo_geo, r_hi_geo, sigma = 2):
+
+    """
+    Check that the implied distances are consistent with the photogeometric ones. As a
+    threshold we use 2 sigma, where we use the 16th and 84th percentiles from
+    Bailer-Jones et al. (2021) as the negative and positive 1sigma estimates
+    for the posterior respectively.
+
+    Therefore, the function handles asymmetric uncertainties by checking whether
+    the distance difference is positive or negative and using different values accordingly.
+
+    input:
+        implied_parallax: implied parallax in mas
+        implied_parallax_errpr: implied parllax error in mas
+        r_med_geo: median distance in pc
+        r_lo_geo: 16th percentile distance in pc
+        r_hi_geo: 84th percentile distance in pc
+        sigma: number of standard deviations to consider the distance consistent
+
+    output:
+        bool: True if the distance is consistent with the implied distance
+    """
+
+
+    bj_parallax = 1e3/r_med_geo # convert distance to parallax in mas
+    bj_lo_parallax = 1e3/r_lo_geo
+    bj_hi_parallax = 1e3/r_hi_geo
+
+    # compute the difference between the implied distance and the median distance
+    parallax_diff =  implied_parallax - bj_parallax
+
+    # element-wise conditional handling for distance_diff < 0
+    parallax_diff_error = np.where(parallax_diff > 0, bj_parallax - bj_lo_parallax , bj_hi_parallax- bj_parallax)
+
+
+    # compute the general distance error
+    parallax_error_general = np.sqrt(implied_parallax_error**2 + parallax_diff_error**2)
+
+    return np.abs(parallax_diff) < sigma * parallax_error_general
 
 def check_extinction(A_G, limit = 1.5):
     """
@@ -293,15 +382,17 @@ def is_in_pixels_lb(l, b, nside = 3):
 
 def is_in_pixels_test(ra, dec):
     # Convert RA and Dec to radians
-    ra = np.deg2rad(ra)
-    dec = np.deg2rad(dec)
+    #ra = np.deg2rad(ra)
+    #dec = np.deg2rad(dec)
 
     # Wrap RA around to [-π, π] (like you do for Mollweide or Aitoff)
-    ra = np.remainder(ra + 2 * np.pi, 2 * np.pi)
-    ra = ra - np.pi
+    #ra = np.remainder(ra + 2 * np.pi, 2 * np.pi)
+    #ra = ra - np.pi
 
     # Invert RA by multiplying by -1
-    ra = -ra
+    #ra = -ra
+    theta = np.radians(90 - dec)  # Colatitude in radians
+    phi = np.radians(-ra)  # Longitude in radians
 
     # Convert to HEALPix indices
     nside = 3
@@ -324,7 +415,7 @@ def is_in_pixels_test(ra, dec):
     pixels_set = set(pixels)  # Convert to a set for faster lookup
 
     # Compute the HEALPix pixel number for each coordinate (ring ordering)
-    pix_nums = hp.ang2pix(nside, ra, dec, nest=False, lonlat=False)
+    pix_nums = hp.ang2pix(nside, theta, phi, nest=False, lonlat=False)
 
     # Check if each pixel number is in the specified list of pixels
     in_pixels = np.isin(pix_nums, list(pixels_set))
@@ -373,6 +464,11 @@ def is_HVS(data):
     data = data[parallax_consistency_bol]
     print('Number of consistent parallaxes:', len(data))
 
+    # check if the parallax over error is good
+    print('Checking if the parallax is good')
+    data = data[good_parallax(np.abs(data['implied_parallax']), data['implied_parallax_error'])]
+    print('Number of implied parallax_over_error > 5:', len(data))
+
     # check if the star is fast
     print('Checking if the star is fast')
     data = data[is_fast(data['VGCR'])] # could be changed to VR if needed
@@ -385,14 +481,21 @@ def is_HVS(data):
     print('Number of stars with decent astrometry:', len(data))
 
     # define implied distance and distance error
-    data['implied_distance'] = 1/(data['implied_parallax']/1e3) # implied parallax comes in mas, multiplied by 1e3 to get arcsec, therefore the distance is in pc
-    data['implied_distance_error'] = 1e-3*data['implied_parallax_error']/((data['implied_parallax']*1e-3)**2)
+    data['implied_distance'] = 1e3/(data['implied_parallax']) # implied parallax comes in mas, multiplied by 1e-3 to get arcsec, therefore the distance is in pc
+    data['implied_distance_error'] = 1e3*data['implied_parallax_error']/((data['implied_parallax'])**2)
 
     # check the consistency of the distance, note that if querying from Gaia database this must change as column names are different
     print('Checking distance consistency')
-    data['distance_consistency'] = distance_consistency(data['implied_distance'], data['r_med_geo'], data['implied_distance_error'], (data['r_lo_geo'] - data['r_hi_geo'])/2)
+
+    #data['distance_consistency'] = distance_consistency(data['implied_distance'], data['r_med_geo'], data['implied_distance_error'], (data['r_lo_geo'] - data['r_hi_geo']))
+    #distance_consistency_mask = distance_consistency_sill(data['implied_distance'], data['implied_distance_error'],
+    #                                                        data['r_med_photogeo'], data['r_lo_photogeo'],
+    #                                                        data['r_hi_photogeo'], sigma = 2)
+
+    distance_consistency_mask = distance_consistency_sill_parallax(data['implied_parallax'], data['implied_parallax_error'],
+                                                                    data['r_med_photogeo'], data['r_lo_photogeo'], data['r_hi_photogeo'], sigma = 2)
     # keep only consistent distances
-    data = data[data['distance_consistency']]
+    data = data[distance_consistency_mask]
     print('Number of consistent distances:', len(data))
 
     # check if the star is affected by extinction
@@ -414,15 +517,9 @@ def is_HVS(data):
     # check if the star is in the specified pixels
     print('Checking if the star is in the specified pixels')
     # keep only stars in the specified pixels
-    #data = data[is_in_pixels(data['ra'], data['dec'])]
-    #is_in_pixels, pix_nums = is_in_pixels_radec(data['ra'], data['dec'])
-    #is_in_pixels, pix_nums = is_in_pixels_lb(data['l'], data['b'])
+
     is_in_pixels, pix_nums = is_in_pixels_test(data['ra'], data['dec'])
     data['healpix_nside_3'] = pix_nums
-    #not_in_pixels = np.invert(is_in_pixels)
-    #data_not_in_pixels = data[not_in_pixels]
-    #print('Number of stars not in the specified pixels:', len(data_not_in_pixels))
-    #data_not_in_pixels.write('/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/not_in_pixels.fits', format = 'fits', overwrite=True)
     data = data[is_in_pixels]
     # save the ones that are not in the specified pixels
 
