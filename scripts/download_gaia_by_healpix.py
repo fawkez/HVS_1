@@ -130,7 +130,7 @@ def query(HEALPix_pixel, nside = 4, login = False, username = '', password = '',
 
     return merged
 
-def query_2(HEALPix_pixel, nside = 32, login = False, username = '', password = '', nested = True):
+def query_2(HEALPix_pixel, healpix_level = 5, login = False, username = '', password = '', nested = True):
     """
     Retrieve Gaia DR3 data based on a specified HEALPix pixel using the nested HEALPix scheme.
     
@@ -186,13 +186,14 @@ def query_2(HEALPix_pixel, nside = 32, login = False, username = '', password = 
         if len(job_ids)> 5:
             Gaia.remove_jobs(job_ids)
             print(f'Deleting {len(job_ids)} jobs')
+    Gaia.ROW_LIMIT = -1
 
 
 
     # Calculate source ID range for the HEALPix pixel at the given nside
-    factor = (2**35) * (4**(12 - nside))  # Scaling factor based on level
-    source_id_min = HEALPix_pixel * factor
-    source_id_max = (HEALPix_pixel + 1) * factor
+    factor = (2**35) * (4**(12 - healpix_level))  # Scaling factor based on level
+    source_id_min = int(HEALPix_pixel * factor)
+    source_id_max = int((HEALPix_pixel + 1) * factor)
 
     job = Gaia.launch_job_async(f"""
     SELECT gs.source_id, gs.l, gs.b, gs.ra, gs.ra_error, gs.dec, gs.dec_error, 
@@ -226,8 +227,9 @@ if __name__ == '__main__':
     output_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/replicated_candidates_by_healpix"
     gaia_catalogs_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/gaia_by_healpix"
 
-    # Define the NSIDE parameter, for this Sill used 3 but I will use 4
-    nside = 32
+    # Define the healpix pixel level, which defines the NSIDE parameter and the number of pixels
+    healpix_level = 4
+    nside = 2**healpix_level
     npix = hp.nside2npix(nside) 
 
     # read gaia database credentials from file
@@ -245,7 +247,7 @@ if __name__ == '__main__':
             #data = Table.read(os.path.join(gaia_catalogs_path, f"healpix_{healpix_pixel}.fits"))
         else:
             # Query Gaia EDR3 for sources within the specified HEALPix pixel
-            data = query(healpix_pixel, nside=nside, login= True, username= username, password = password)
+            data = query_2(healpix_pixel, healpix_level=healpix_level, login= True, username= username, password = password)
 
             # save the data
             data.write(os.path.join(gaia_catalogs_path, f"healpix_{healpix_pixel}.fits"), overwrite=True)
