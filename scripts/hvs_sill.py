@@ -51,7 +51,7 @@ if __name__ == '__main__':
 
     HVS_counter = 0
     # Loop over the pixels
-    for healpix_pixel in tqdm(pixels):
+    for healpix_pixel in tqdm(np.arange(0, 192)):
         print(f"Processing HEALPix pixel {healpix_pixel}")
 
         # Check if the data is already downloaded

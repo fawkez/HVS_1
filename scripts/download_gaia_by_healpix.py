@@ -14,88 +14,210 @@ import astropy
 
 
 
-def query(HEALPix_pixel, nside = 4, login = False, username = '', password = '', nested = True): #target_name must be the source id of the star to study
-                        #returns a panda DataFrame with the required data to study cluster membership
-                        #if the data is not present in the folder a gaia query is performed
+def query(HEALPix_pixel, nside = 4, login = False, username = '', password = '', nested = True):    
+    """
+    Retrieve Gaia DR3 data based on a specified HEALPix pixel using the nested HEALPix scheme.
+    
+    This function queries the Gaia DR3 catalog for astrometric, photometric, and external distance data,
+    and returns the results as a pandas DataFrame. The query can be performed for a specific HEALPix pixel 
+    using the nested scheme at different resolutions (nside), with optional login to the Gaia archive for 
+    querying larger datasets.
+
+    Parameters:
+    -----------
+    HEALPix_pixel : int
+        The HEALPix pixel (in nested format) corresponding to the region of the sky for which data is queried.
         
-        print('Starting Query')
-        if nested:
-            print('Processing nested healpix pixel:', HEALPix_pixel)
-
-        if not nested: # note that this will not work with nside = 3
-            print('Converting to nested')
-            HEALPix_pixel = hp.ring2nest(nside, HEALPix_pixel)
-            print('Nested healpix pixel:', HEALPix_pixel)
+    nside : int, default=4
+        The resolution of the HEALPix grid, defining the number of sky subdivisions. Higher values increase
+        resolution. The default nside is 4.
         
-
-        start_time = time.time()
-
-        source_id_range = {}
-
-        for neighbour in [HEALPix_pixel] :
-            source_id_range[neighbour] = neighbour*(2**35)*(4**(12- nside)), (neighbour+1)*(2**35)*(4**(12- nside))
-
-
-        #login to gaia
-        if login:
-            Gaia.login(user=username, password=password) 
-            #check if there are too many jobs and delete the extra to allow more
+    login : bool, default=False
+        A flag indicating whether to log in to the Gaia archive. If set to True, a valid username and password
+        must be provided.
         
-            jobs = [job for job in Gaia.list_async_jobs()]
-            # To remove all the jobs at once:
-            job_ids = [job.jobid for job in jobs]
-            if len(job_ids)> 5:
-                Gaia.remove_jobs(job_ids)
-                print(f'Deleting {len(job_ids)} jobs')
+    username : str, default=''
+        Username for logging into the Gaia archive, required if login is True.
+        
+    password : str, default=''
+        Password for logging into the Gaia archive, required if login is True.
+        
+    nested : bool, default=True
+        Specifies whether the HEALPix pixel index is in nested format. If set to False, the pixel index will
+        be converted from ring format to nested format.
 
-        #change mirror for speed
-        #Gaia = GaiaClass(gaia_tap_server='http://gaia.ari.uni-heidelberg.de/tap') #does not work now
-        #query for gaia edr3 data
-        job = Gaia.launch_job_async("SELECT source_id, l, b, ra, ra_error, dec, dec_error, parallax, parallax_error,"
-            " pmra, pmra_error, pmdec, pmdec_error,"
-            " astrometric_params_solved, astrometric_excess_noise, astrometric_excess_noise_sig,"
-            " ruwe, pseudocolour, nu_eff_used_in_astrometry, pseudocolour, ecl_lat,"
-            #-- Gaia photometry
-            "phot_g_mean_mag, phot_g_mean_flux,"
-            "phot_bp_mean_mag, phot_bp_mean_flux,"
-            "phot_rp_mean_mag, phot_rp_mean_flux,"
-            "phot_bp_rp_excess_factor"
-            #-- From Gaia EDR3
-            " FROM gaiadr3.gaia_source"
-            #-- Select only valid points
-            ' WHERE ((source_id >= ' + str(source_id_range[HEALPix_pixel][0]) + ' AND source_id < ' +  str(source_id_range[HEALPix_pixel][1]) + '))'
-            ' AND ra IS NOT NULL '
-            ' AND dec IS NOT NULL '
-            ' AND parallax IS NOT NULL '
-            ' AND ruwe < 1.4 '
-            ' AND bp_rp < 2') # This might hunt me later, but if we impose that bp_rp < 2, we are removing stars that have bp_rp < 0.5, for the entirety of the allowed reddening range
-        r = job.get_results()
-        r['source_id'] = r['SOURCE_ID']
+    Returns:
+    --------
+    pandas.DataFrame
+        A DataFrame containing the queried Gaia DR3 data, including astrometric (proper motions, parallaxes), 
+        photometric (magnitudes, fluxes), and optionally geometrical distance estimates from the external 
+        distance catalog.
+
+    """
+            
+    print('Starting Query')
+    if nested:
+        print('Processing nested healpix pixel:', HEALPix_pixel)
+
+    if not nested: # note that this will not work with nside = 3
+        print('Converting to nested')
+        HEALPix_pixel = hp.ring2nest(nside, HEALPix_pixel)
+        print('Nested healpix pixel:', HEALPix_pixel)
+    
+
+    start_time = time.time()
+
+    source_id_range = {}
+
+    for neighbour in [HEALPix_pixel] :
+        source_id_range[neighbour] = neighbour*(2**35)*(4**(12- nside)), (neighbour+1)*(2**35)*(4**(12- nside))
 
 
-        #Correct parallax zero point bias
+    #login to gaia
+    if login:
+        Gaia.login(user=username, password=password) 
+        #check if there are too many jobs and delete the extra to allow more
+    
+        jobs = [job for job in Gaia.list_async_jobs()]
+        # To remove all the jobs at once:
+        job_ids = [job.jobid for job in jobs]
+        if len(job_ids)> 5:
+            Gaia.remove_jobs(job_ids)
+            print(f'Deleting {len(job_ids)} jobs')
 
-        zpt.load_tables()
-        valid = r['astrometric_params_solved']>3
-        zpvals = zpt.get_zpt(r['phot_g_mean_mag'][valid], r['nu_eff_used_in_astrometry'][valid], r['pseudocolour'][valid], r['ecl_lat'][valid], r['astrometric_params_solved'][valid])
-        r['zpvals'] = np.nan
-        r['zpvals'][valid] = zpvals
-        r['parallax_corrected'] = r['parallax']-r['zpvals']
+    #change mirror for speed
+    #Gaia = GaiaClass(gaia_tap_server='http://gaia.ari.uni-heidelberg.de/tap') #does not work now
+    #query for gaia edr3 data
+    job = Gaia.launch_job_async("SELECT source_id, l, b, ra, ra_error, dec, dec_error, parallax, parallax_error,"
+        " pmra, pmra_error, pmdec, pmdec_error,"
+        " astrometric_params_solved, astrometric_excess_noise, astrometric_excess_noise_sig,"
+        " ruwe, pseudocolour, nu_eff_used_in_astrometry, pseudocolour, ecl_lat,"
+        #-- Gaia photometry
+        "phot_g_mean_mag, phot_g_mean_flux,"
+        "phot_bp_mean_mag, phot_bp_mean_flux,"
+        "phot_rp_mean_mag, phot_rp_mean_flux,"
+        "phot_bp_rp_excess_factor"
+        #-- From Gaia EDR3
+        " FROM gaiadr3.gaia_source"
+        #-- Select only valid points
+        ' WHERE ((source_id >= ' + str(source_id_range[HEALPix_pixel][0]) + ' AND source_id < ' +  str(source_id_range[HEALPix_pixel][1]) + '))'
+        ' AND ruwe < 1.4 ') # This might hunt me later, but if we impose that bp_rp < 2, we are removing stars that have bp_rp < 0.5, for the entirety of the allowed reddening range
+    r = job.get_results()
+    r['source_id'] = r['SOURCE_ID']
 
-        #external query for geometrical distances
-        job2 = Gaia.launch_job_async("SELECT source_id, r_med_geo, r_lo_geo, r_hi_geo, r_med_photogeo, r_lo_photogeo, r_hi_photogeo"
-        #    #-- From Gaia EDR3
-            " FROM external.gaiaedr3_distance"
-        #    #-- Select only valid points
-            ' WHERE ((source_id >= ' + str(source_id_range[HEALPix_pixel][0]) + ' AND source_id < ' +  str(source_id_range[HEALPix_pixel][1]) + '))')
-        r_geo =  job2.get_results()
 
-        print(f'Query done in {time.time() - start_time}')
+    #Correct parallax zero point bias
 
-        # merge tables by source_id given by the left astropy table
-        merged = join(r, r_geo, keys='source_id', join_type='left')
+    # zpt.load_tables()
+    # valid = r['astrometric_params_solved']>3
+    # zpvals = zpt.get_zpt(r['phot_g_mean_mag'][valid], r['nu_eff_used_in_astrometry'][valid], r['pseudocolour'][valid], r['ecl_lat'][valid], r['astrometric_params_solved'][valid])
+    # r['zpvals'] = np.nan
+    # r['zpvals'][valid] = zpvals
+    # r['parallax_corrected'] = r['parallax']-r['zpvals']
 
-        return merged
+    #external query for geometrical distances
+    job2 = Gaia.launch_job_async("SELECT source_id, r_med_geo, r_lo_geo, r_hi_geo, r_med_photogeo, r_lo_photogeo, r_hi_photogeo"
+    #    #-- From Gaia EDR3
+        " FROM external.gaiaedr3_distance"
+    #    #-- Select only valid points
+        ' WHERE ((source_id >= ' + str(source_id_range[HEALPix_pixel][0]) + ' AND source_id < ' +  str(source_id_range[HEALPix_pixel][1]) + '))')
+    r_geo =  job2.get_results()
+
+    print(f'Query done in {time.time() - start_time}')
+
+    # merge tables by source_id given by the left astropy table
+    merged = join(r, r_geo, keys='source_id', join_type='left')
+
+    return merged
+
+def query_2(HEALPix_pixel, nside = 32, login = False, username = '', password = '', nested = True):
+    """
+    Retrieve Gaia DR3 data based on a specified HEALPix pixel using the nested HEALPix scheme.
+    
+    This function queries the Gaia DR3 catalog for astrometric, photometric, and external distance data,
+    and returns the results as a pandas DataFrame. The query can be performed for a specific HEALPix pixel 
+    using the nested scheme at different resolutions (nside), with optional login to the Gaia archive for 
+    querying larger datasets.
+
+    Parameters:
+    -----------
+    HEALPix_pixel : int
+        The HEALPix pixel (in nested format) corresponding to the region of the sky for which data is queried.
+        
+    nside : int, default=4
+        The resolution of the HEALPix grid, defining the number of sky subdivisions. Higher values increase
+        resolution. The default nside is 4.
+        
+    login : bool, default=False
+        A flag indicating whether to log in to the Gaia archive. If set to True, a valid username and password
+        must be provided.
+        
+    username : str, default=''
+        Username for logging into the Gaia archive, required if login is True.
+        
+    password : str, default=''
+        Password for logging into the Gaia archive, required if login is True.
+        
+    nested : bool, default=True
+        Specifies whether the HEALPix pixel index is in nested format. If set to False, the pixel index will
+        be converted from ring format to nested format.
+
+    Returns:
+    --------
+    pandas.DataFrame
+        A DataFrame containing the queried Gaia DR3 data, including astrometric (proper motions, parallaxes), 
+        photometric (magnitudes, fluxes), and optionally geometrical distance estimates from the external 
+        distance catalog.
+
+    """
+    if not nested: # note that this will not work with nside = 3
+        HEALPix_pixel = hp.ring2nest(nside, HEALPix_pixel)
+        print('Nested healpix pixel:', HEALPix_pixel)
+
+    #login to gaia, this will be slower but it is necessary for large queries
+    if login:
+        Gaia.login(user=username, password=password) 
+
+        #check if there are too many jobs and delete the extra to allow more
+        jobs = [job for job in Gaia.list_async_jobs()]
+
+        # To remove all the jobs at once:
+        job_ids = [job.jobid for job in jobs]
+        if len(job_ids)> 5:
+            Gaia.remove_jobs(job_ids)
+            print(f'Deleting {len(job_ids)} jobs')
+
+
+
+    # Calculate source ID range for the HEALPix pixel at the given nside
+    factor = (2**35) * (4**(12 - nside))  # Scaling factor based on level
+    source_id_min = HEALPix_pixel * factor
+    source_id_max = (HEALPix_pixel + 1) * factor
+
+    job = Gaia.launch_job_async(f"""
+    SELECT gs.source_id, gs.l, gs.b, gs.ra, gs.ra_error, gs.dec, gs.dec_error, 
+           gs.parallax, gs.parallax_error, gs.pmra, gs.pmra_error, gs.pmdec, gs.pmdec_error,
+           gs.astrometric_params_solved, gs.astrometric_excess_noise, gs.astrometric_excess_noise_sig, 
+           gs.ruwe, gs.pseudocolour, gs.nu_eff_used_in_astrometry, gs.ecl_lat, 
+           gs.phot_g_mean_mag, gs.phot_g_mean_flux, gs.phot_bp_mean_mag, gs.phot_bp_mean_flux, 
+           gs.phot_rp_mean_mag, gs.phot_rp_mean_flux, gs.phot_bp_rp_excess_factor, 
+           gd.r_med_geo, gd.r_lo_geo, gd.r_hi_geo, gd.r_med_photogeo, gd.r_lo_photogeo, gd.r_hi_photogeo
+    FROM gaiadr3.gaia_source AS gs
+    JOIN external.gaiaedr3_distance AS gd 
+    USING (source_id)
+    WHERE gs.source_id >= {source_id_min} 
+      AND gs.source_id < {source_id_max}
+      AND gs.ruwe < 1.4
+    """)
+    r = job.get_results()
+
+    if len(r) == 3e6:
+        # raise exception if the maximum number of sources is reached
+        print("Warning: Maximum number of sources reached for HEALPix pixel", HEALPix_pixel)
+        # stop the execution
+        raise Exception("Maximum number of sources reached")
+
+    return r
 
 
 
@@ -105,7 +227,8 @@ if __name__ == '__main__':
     gaia_catalogs_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/gaia_by_healpix"
 
     # Define the NSIDE parameter, for this Sill used 3 but I will use 4
-    nside = 4
+    nside = 32
+    npix = hp.nside2npix(nside) 
 
     # read gaia database credentials from file
     with open("/Users/mncavieres/Documents/2024-2/HVS/gaia_credentials.txt", "r") as f:
@@ -113,7 +236,7 @@ if __name__ == '__main__':
         password = f.readline().strip()
         
     # Loop over the pixels
-    for healpix_pixel in tqdm(np.arange(0, 192)):
+    for healpix_pixel in tqdm(np.arange(0, npix+1)):
         print(f"Processing HEALPix pixel {healpix_pixel}")
 
         # Check if the data is already downloaded
