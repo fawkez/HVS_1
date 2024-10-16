@@ -5,6 +5,7 @@ from numba import njit
 from astropy.table import Table
 import os
 import astropy
+import pandas as pd
 
 def compute_R0_V0_SI():
     """
@@ -215,6 +216,9 @@ def getdist_numba(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s,
 
 def getdist_vectorized(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s,
                   epmra_rad_s, epmdec_rad_s, R0, V0):
+    # check if ra_rad is a numpy.float64
+    if isinstance(ra_rad, np.float64):
+        ra_rad = np.array([ra_rad])
     N = len(ra_rad)
     plx = np.empty(N)
     eplx = np.empty(N)
@@ -315,22 +319,16 @@ def post_process_results(plx, eplx, VGCR, VR):
     if isinstance(eplx, u.Quantity):
         eplx = eplx.value
 
-    # Check if plx and eplx are in the correct units
-    if not isinstance(plx, u.Quantity):
-        plx = plx * u.meter**-1
+    # check if plx and eplx are 'Series' objects
+    if isinstance(plx, pd.Series):
+        plx = plx.values
+    if isinstance(eplx, pd.Series):
+        eplx = eplx.values
 
-    if not isinstance(eplx, u.Quantity):
-        eplx = eplx * u.meter**-1
-    
-    # if not isinstance(VGCR, u.Quantity):
-    #     VGCR = VGCR * u.meter/u.second
-    
-    # if not isinstance(VR, u.Quantity):
-    #     VR = VR * u.meter/u.second
-    # Convert plx and eplx from 1/m to mas
 
-    plx_mas = (plx.value/u.meter).to(1/u.pc, equivalencies=u.parallax())*1e3
-    eplx_mas = (eplx.value/u.meter).to(1/u.pc, equivalencies=u.parallax())*1e3
+    # If this stops working try adding .value after plx and eplx
+    plx_mas = (plx/u.meter).to(1/u.pc, equivalencies=u.parallax())*1e3
+    eplx_mas = (eplx/u.meter).to(1/u.pc, equivalencies=u.parallax())*1e3
     
     # except astropy.units.core.UnitConversionError:
     #     print('Unit conversion error in plx and eplx')
@@ -409,15 +407,15 @@ def implied_calculations(data):
     epmdec_rad_s = data['pmdec_error'] * masyr_to_radsec
 
     # Compute R0 and V0 in SI units (meters and meters per second)
-    print('Computing R0 and V0...')
+    #print('Computing R0 and V0...')
     R0_SI, V0_SI = compute_R0_V0_SI()
 
     # Run optimized function
-    print('Computing distances and velocities...')
+    #print('Computing distances and velocities...')
     plx_opt, eplx_opt, VGCR_opt, VR_opt = getdist_vectorized(
         ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, epmra_rad_s, epmdec_rad_s, R0_SI, V0_SI
     )
-    print('Distances and velocities computed successfully!')
+    #print('Distances and velocities computed successfully!')
     # Post-process the results
     plx_mas, eplx_mas, VGCR_kms, VR_kms = post_process_results(plx_opt, eplx_opt, VGCR_opt, VR_opt)
 
@@ -428,6 +426,34 @@ def implied_calculations(data):
     data['VR'] = VR_kms
 
     return data
+
+def implied_calculations_single(ra, dec, pmra, pmdec, pmra_error, pmdec_error):
+    # Convert positions to radians
+    ra_rad = np.deg2rad(ra)
+    dec_rad = np.deg2rad(dec)
+
+    # Convert proper motions to radians per second
+    masyr_to_radsec = (1 * u.mas / u.yr).to(u.rad / u.s).value
+    pmra_rad_s = pmra * masyr_to_radsec
+    pmdec_rad_s = pmdec * masyr_to_radsec
+    epmra_rad_s = pmra_error * masyr_to_radsec
+    epmdec_rad_s = pmdec_error* masyr_to_radsec
+
+    # Compute R0 and V0 in SI units (meters and meters per second)
+    #print('Computing R0 and V0...')
+    R0_SI, V0_SI = compute_R0_V0_SI()
+
+    # Run optimized function
+    #print('Computing distances and velocities...')
+    plx_opt, eplx_opt, VGCR_opt, VR_opt = getdist_vectorized(
+        ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, epmra_rad_s, epmdec_rad_s, R0_SI, V0_SI
+    )
+    #print('Distances and velocities computed successfully!')
+    # Post-process the results
+    plx_mas, eplx_mas, VGCR_kms, VR_kms = post_process_results(plx_opt, eplx_opt, VGCR_opt, VR_opt)
+
+    return plx_mas, eplx_mas, VGCR_kms, VR_kms
+
 
 if __name__ == "__main__":
     #test_functions()
