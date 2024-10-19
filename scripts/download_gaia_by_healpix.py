@@ -3,12 +3,12 @@ from astroquery.gaia import Gaia
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 import numpy as np
-from selections import is_HVS
+from scripts.selections import is_HVS
 import time
 from zero_point import zpt
 from astropy.table import Table, join, vstack
 import healpy as hp
-from implied_d_vr import implied_calculations
+from scripts.implied_d_vr import implied_calculations
 from tqdm import tqdm
 import astropy
 
@@ -130,7 +130,7 @@ def query(HEALPix_pixel, nside = 4, login = False, username = '', password = '',
 
     return merged
 
-c
+
 
 
 
