@@ -29,6 +29,16 @@ import sys
 import time
 import os
 
+from amuse.community.sse.interface import SSE
+from amuse import datamodel
+from amuse.units import units
+
+from scipy.interpolate import interp1d
+# import quad
+from scipy.integrate import quad
+
+
+
 from .utils.imfmaster.imf import imf
 
 class EjectionModel:

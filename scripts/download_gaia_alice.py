@@ -41,3 +41,9 @@ if __name__ == '__main__':
 
             # save the data
             data.write(os.path.join(gaia_catalogs_path, f"healpix_{healpix_pixel}.fits"), overwrite=True)
+        
+        # delete variables to free memory
+        del data
+        del r
+
+        

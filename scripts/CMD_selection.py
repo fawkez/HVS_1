@@ -80,6 +80,7 @@ def smooth_histogram(ratio_hist, x_bins, y_bins, sigma= 1):
     """
 
     # Parameters for Gaussian smoothing
+    # convert sigma from mag to pixels assuming 0.035 mag per pixel
     sigma = sigma  # Standard deviation for Gaussian kernel in pixels; adjust for more or less smoothing
 
     # Apply Gaussian smoothing to the histogram

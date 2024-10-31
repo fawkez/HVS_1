@@ -327,13 +327,14 @@ def post_process_results(plx, eplx, VGCR, VR):
 
 
     # If this stops working try adding .value after plx and eplx
-    plx_mas = (plx/u.meter).to(1/u.pc, equivalencies=u.parallax())*1e3
-    eplx_mas = (eplx/u.meter).to(1/u.pc, equivalencies=u.parallax())*1e3
+    try:
+        plx_mas = (plx/u.meter).to(1/u.pc, equivalencies=u.parallax())*1e3
+        eplx_mas = (eplx/u.meter).to(1/u.pc, equivalencies=u.parallax())*1e3
     
-    # except astropy.units.core.UnitConversionError:
-    #     print('Unit conversion error in plx and eplx')
-    #     plx_mas = (plx.value * u.meter*-1).to(1/u.pc, equivalencies=u.parallax())*1e3
-    #     eplx_mas = (eplx.value * u.meter*-1).to(1/u.pc, equivalencies=u.parallax())*1e3
+    except:
+        print('Unit conversion error in plx and eplx')
+        plx_mas = (plx.value / u.meter).to(1/u.pc, equivalencies=u.parallax())*1e3
+        eplx_mas = (eplx.value / u.meter).to(1/u.pc, equivalencies=u.parallax())*1e3
     
 
     # VGCR and VR are in m/s, convert to km/s
