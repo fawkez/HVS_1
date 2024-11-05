@@ -100,7 +100,7 @@ def sample_MF_PDMF2(n_samp, Mmin=0.1, kappa = 4.1, NSC = True):
         return np.array(mass_samples).flatten()*u.Msun, np.array(age_samples).flatten()*u.Gyr, flight_times*u.Gyr, present_rate
 
 if __name__ == '__main__':
-    sample = sample_MF_PDMF2( 10000, Mmin=0.1, NSC= True)
+    sample = sample_MF_PDMF2( 10000, Mmin=0.8, NSC= True)
     mass = sample[0]
     age = sample[1]
     flight_times = sample[2]
