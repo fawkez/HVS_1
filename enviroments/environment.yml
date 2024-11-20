@@ -1,4 +1,4 @@
-name: speedytest2
+name: speedytest3
 channels:
   - conda-forge
   - defaults

@@ -427,3 +427,7 @@ speedystar/speedystar/utils/mwdust3/
 /Plots/implementing_sill_selections/distance_distribution
 /Plots/implementing_sill_selections/distance_distribution_MCMC
 /speedystar/simulated_catalogs
+*.mp4
+*.pyc
+*.svg
+*.tex
