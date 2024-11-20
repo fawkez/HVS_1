@@ -431,3 +431,4 @@ speedystar/speedystar/utils/mwdust3/
 *.pyc
 *.svg
 *.tex
+MultiNest/
