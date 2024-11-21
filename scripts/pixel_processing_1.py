@@ -50,7 +50,7 @@ class BayesianKDEClassifier:
         # Split data by class
         self.X_class = X_class
         self.Y_class = Y_class
-        self.X_not_class = X_nop_class
+        self.X_not_class = X_not_class
         self.Y_not_class = Y_not_class
 
         # Calculate prior probabilities
@@ -292,6 +292,8 @@ def process_pixel(data):
     # Combine errors to compute color uncertainty
     data['bp_rp_error'] = np.sqrt(data['phot_bp_error']**2 + data['phot_rp_error']**2)
 
+    # Load the simulated catalog for training the KDE
+    simulated_catalog = pd.read_csv('/data1/cavierescarrera/simulated_catalogs/top_heavy_k17_with_implied.csv')
 
     # define the KDE classifier object
     X_not_class = data['bp_rp_corr']
