@@ -17,6 +17,8 @@ from astropy.coordinates.matrix_utilities import rotation_matrix, matrix_product
 from numba import njit
 import astropy
 
+
+
 # load dust map sfd
 from dustmaps.sfd import SFDQuery
 sfd = SFDQuery()
