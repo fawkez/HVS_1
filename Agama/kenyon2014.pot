@@ -1,0 +1,24 @@
+# Kenyon et al. (2014) Milky Way potential
+# Units: 1 Msun, 1 kpc, 1 km/s
+
+[Potential bulge]
+type        = Spheroid
+densityNorm = 1.57e10            # Normalization from 3.76e9 Msun and scale radius of 0.1 to obtain surface density M/(2 pi a^3)
+gamma       = 1                 # Inner slope (Hernquist-like profile)
+beta        = 3                 # Outer slope
+scaleRadius = 0.1               # Scale radius in kpc
+outerCutoffRadius = 2.1         # Truncation radius in kpc
+
+[Potential disk]
+type        = MiyamotoNagai
+scaleRadius = 2.75              # Radial scale length in kpc (updated from Kenyon 2008)
+scaleHeight = 0.3               # Vertical scale height in kpc
+mass        = 6.0e10            # Disk mass in Msun (updated from Kenyon 2008)
+
+[Potential halo]
+type        = Spheroid
+densityNorm = 8.0e6             # Adjusted normalization for NFW-like halo
+gamma       = 1.0               # Inner slope
+beta        = 3.0               # Outer slope
+scaleRadius = 20.0              # Scale radius in kpc
+outerCutoffRadius = 250.0       # Truncation radius in kpc

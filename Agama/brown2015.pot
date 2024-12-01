@@ -1,0 +1,21 @@
+# Kenyon et al. (2014) Milky Way potential
+# Units: 1 Msun, 1 kpc, 1 km/s
+
+[Potential bulge]
+type        = Plummer
+mass        = 3.76e9
+scaleRadius = 0.1
+
+
+[Potential disk]
+type        = MiyamotoNagai
+scaleRadius = 2.750              # Radial scale length in kpc (updated from Kenyon 2008)
+scaleHeight = 0.3               # Vertical scale height in kpc
+mass        = 6.0e10            # Disk mass in Msun (updated from Kenyon 2008)
+
+[Potential halo]
+# note that the 'mass' parameter refers to the enclosed mass within 5.3 scale radii,
+# not the total mass (which is infinite for a NFW profile)
+type        = NFW
+mass        = 1.0e11
+scaleRadius = 20
