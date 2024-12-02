@@ -17,5 +17,5 @@ mass        = 6.0e10            # Disk mass in Msun (updated from Kenyon 2008)
 # note that the 'mass' parameter refers to the enclosed mass within 5.3 scale radii,
 # not the total mass (which is infinite for a NFW profile)
 type        = NFW
-mass        = 1.0e11
+mass        = 1.0e12
 scaleRadius = 20
