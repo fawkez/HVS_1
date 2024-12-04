@@ -432,3 +432,4 @@ speedystar/speedystar/utils/mwdust3/
 *.svg
 *.tex
 MultiNest/
+Plots/*
