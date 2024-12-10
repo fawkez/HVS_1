@@ -768,11 +768,11 @@ class Hills(EjectionModel):
     T_MW = 13.8*u.Gyr # MW maximum lifetime from Planck2015
 
     def __init__(self, M_BH=4e6*u.Msun, Met=np.random.uniform, Zsun=0.0142,
-                 metargs=(-0.25, +0.25), tflightmax=100.*u.Myr, cut_factor=1,
+                 metargs=(-0.25, +0.25), tflightmax=300.*u.Myr, cut_factor=1,
                  name_modifier=None, alpha=-1, gamma=0, rate=1e-4/u.yr,
                  imftype='Salpeter', kappa1=0.3, kappa2=1.3, kappa=2.3,
                  mmin=0.1, mmax=100, mbreak1=0.08, mbreak2=0.5,
-                 v_range=[500, 5e4]*u.km/u.s, m_range=[0.5, 1e3]*u.Msun,
+                 v_range=[300, 5e4]*u.km/u.s, m_range=[0.1, 1e3]*u.Msun,
                  centralr=3*u.pc, amuseflag=False, LaunchLoc=None):
         '''
         Parameters
@@ -2228,7 +2228,7 @@ class HillsFromCatalog(Hills):
     def validate_catalog(self):
         """Ensure the catalog contains all required keys for sampling."""
         required_keys = [
-            'mass', 'age', 'flight_time', 'radius', 'logL', 
+            'mass', 'age', 'radius', 'logL', 
             'Teff', 'logg', 'feh', 'G', 'BP', 'RP', 'eep'
         ]
         for key in required_keys:
@@ -2259,8 +2259,10 @@ class HillsFromCatalog(Hills):
     
         # Extract catalog properties
         mass = self.catalog['mass'] * u.Msun
-        age = self.catalog['age'] * u.Myr
-        flight_time = self.catalog['flight_time'] * u.Myr
+        # age comes in log10(age) yr so convert to Myr
+        age = 10**self.catalog['age']*u.yr.to(u.Myr)
+        #age = self.catalog['age'] * u.Myr
+        #flight_time = self.catalog['flight_time'] * u.Myr
         radius = self.catalog['radius'] * u.Rsun
         logL = self.catalog['logL']
         Teff = self.catalog['Teff'] * u.K
@@ -2273,7 +2275,7 @@ class HillsFromCatalog(Hills):
 
         # Ensure all catalog arrays have the same size
         n_catalog = len(mass)
-        if not all(len(arr) == n_catalog for arr in [age, flight_time, radius, logL, Teff, G, BP, RP, logg, feh, eep]):
+        if not all(len(arr) == n_catalog for arr in [age, radius, logL, Teff, G, BP, RP, logg, feh, eep]):
             raise ValueError("All catalog arrays must have the same size.")
 
         # Assign binary properties (mass ratio q)
@@ -2299,11 +2301,15 @@ class HillsFromCatalog(Hills):
 
         # Extract additional stellar properties
         tage = age  # Stellar age in Myr
-        tflight = flight_time  # Flight time in Myr
+        #tflight = flight_time  # Flight time in Myr
         R = radius  # Stellar radius in solar radii
         T_eff = Teff  # Effective temperature in Kelvin
         Lum = logL  # Logarithmic luminosity (L/Lsun)
         met = feh  # Metallicity ([Fe/H])
+
+        # Sample tflight from a uniform distribution
+        tflight = np.random.uniform(0, self.tflightmax.value, n_catalog) * u.Myr
+        self.tflight = tflight
 
         # Stage information
         stage = eep  # Evolutionary stage (if provided)

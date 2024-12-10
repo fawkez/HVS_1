@@ -228,6 +228,30 @@ def plot_closest_origins(origins, xlim=(-60, 60), ylim=(-60, 60)):
 
 
 
+def sample_positive_distances(d_helio, d_helio_err, n_samples):
+    """
+    Sample distances from a Gaussian distribution, ensuring all values are positive.
+    
+    Parameters:
+        d_helio (float): Mean distance (e.g., heliocentric distance) in the distribution.
+        d_helio_err (float): Standard deviation of the distribution.
+        n_samples (int): Number of samples to generate.
+    
+    Returns:
+        numpy.ndarray: Array of sampled distances, all positive.
+    """
+    samples = []
+    while len(samples) < n_samples:
+        # Generate samples
+        new_samples = np.random.normal(d_helio, d_helio_err, n_samples - len(samples))
+        # Keep only positive values
+        positive_samples = new_samples[new_samples > 0]
+        # Append valid samples to the list
+        samples.extend(positive_samples)
+    
+    return np.array(samples)
+
+
 def integrate_orbits_to_closest_plane_crossing_agama(
     star, ra_col='ra', dec_col='dec', pmra_col='pmra',
     pmdec_col='pmdec', d_col='d_helio', v_col='v_helio',
@@ -292,8 +316,11 @@ def integrate_orbits_to_closest_plane_crossing_agama(
     dec_samples = np.full(n_samples, dec)
     pmra_samples = np.random.normal(pmra, pmra_err, n_samples)
     pmdec_samples = np.random.normal(pmdec, pmdec_err, n_samples)
-    d_samples = np.random.normal(d_helio, d_helio_err, n_samples)
     v_samples = np.random.normal(v_helio, v_helio_err, n_samples)
+    # sample only positive distances
+    #d_samples = np.random.normal(d_helio, d_helio_err, n_samples)
+    d_samples = sample_positive_distances(d_helio, d_helio_err, n_samples)
+    
     
     # Initialize output
     closest_origins = []
@@ -537,7 +564,9 @@ def integrate_orbits_to_plane_crossing_agama_parallel(
     dec_samples = np.full(n_samples, dec)
     pmra_samples = np.random.normal(pmra, pmra_err, n_samples)
     pmdec_samples = np.random.normal(pmdec, pmdec_err, n_samples)
-    d_samples = np.random.normal(d_helio, d_helio_err, n_samples)
+    #d_samples = np.random.normal(d_helio, d_helio_err, n_samples)
+    d_samples = sample_positive_distances(d_helio, d_helio_err, n_samples) # sample the distances gaussian but truncated to be only positive
+    
     v_samples = np.random.normal(v_helio, v_helio_err, n_samples)
 
     # Create sample data tuples

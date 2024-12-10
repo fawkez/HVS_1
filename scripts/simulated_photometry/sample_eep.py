@@ -5,8 +5,19 @@ from isochrones.mist import MIST_Isochrone
 from tqdm import tqdm
 from astropy.table import Table
 
-def generate_uniform_eep(n_sample, mass_range=(0.3, 100.0),
-    metallicity=0.1, metallicity_range=None, eep_range=(100, 800)):
+from isochrones import get_ichrone
+from isochrones import get_ichrone
+from isochrones.mist import MIST_Isochrone
+from isochrones.mist import MIST_EvolutionTrack
+
+
+
+
+
+import pandas as pd
+
+def generate_uniform_eep(n_sample, mass_range=(0.3, 10.0),
+    metallicity=0.25, metallicity_range=None, eep_range=(202, 808)):
     """
     Generate synthetic photometry for n_sample stars using MIST evolutionary tracks,
     with mass, EEP, and metallicity as inputs.
@@ -75,84 +86,6 @@ def generate_uniform_eep(n_sample, mass_range=(0.3, 100.0),
 
     return pd.DataFrame(results)
 
-def get_star_photometry_v2(feh_array, initial_mass_array, age_ejection_array, flight_time_array):
-    """
-    Retrieve Gaia photometry for a set of stars given their initial masses, metallicities (feh),
-    and ages using the MIST isochrone model.
-
-    Parameters:
-    - feh_array: array-like, metallicities [Fe/H] of the stars.
-    - initial_mass_array: array-like, initial masses of the stars in solar masses.
-    - age_ejection_array: array-like, ejection ages of the stars in Gyr.
-    - flight_time_array: array-like, flight times of the stars in Gyr.
-
-    Returns:
-    - pandas DataFrame with Gaia magnitudes 'G', 'BP', 'RP', and other stellar properties.
-    """
-    # Load the MIST isochrone model
-    mist = get_ichrone('mist')
-
-    results = []
-
-    # Iterate over each star's parameters
-    for feh, initial_mass, age_ejection, flight_time in tqdm(zip(
-            feh_array, initial_mass_array, age_ejection_array, flight_time_array), total=len(feh_array)):
-        
-        age = np.log10((age_ejection + flight_time)) + 9 # Convert age to log10(age) in yr
-
-        try:
-            # Generate the star's model
-            star_model = mist.generate(mass=initial_mass, age=age, feh=feh, accurate=True)
-            
-            # Extract scalar values from the DataFrame
-            G_mag = star_model['G_mag'].values[0]
-            BP_mag = star_model['BP_mag'].values[0]
-            RP_mag = star_model['RP_mag'].values[0]
-            Teff = star_model['Teff'].values[0]
-            logg = star_model['logg'].values[0]
-            radius = star_model['radius'].values[0]
-            logL = star_model['logL'].values[0]
-            feh_value = star_model['feh'].values[0]
-            eep = star_model['eep'].values[0]
-            
-            result = {
-                'G': G_mag,
-                'BP': BP_mag,
-                'RP': RP_mag,
-                'Teff': Teff,
-                'logg': logg,
-                'radius': radius,
-                'logL': logL,
-                'feh': feh_value,
-                'eep': eep
-            }
-            print(f"Generated model for star with mass {initial_mass}, age {age}, feh {feh}")
-        except (ValueError, RuntimeError, IndexError) as e:
-            print(f"Error during model generation for star with mass {initial_mass}, "
-                  f"age {age}, feh {feh}: {e}")
-            # Assign NaN values if generation fails
-            result = {
-                'G': np.nan,
-                'BP': np.nan,
-                'RP': np.nan,
-                'Teff': np.nan,
-                'logg': np.nan,
-                'radius': np.nan,
-                'logL': np.nan,
-                'feh': np.nan,
-                'eep': np.nan
-            }
-        
-        results.append(result)
-
-    return Table(results)
-
-
-import numpy as np
-import pandas as pd
-from isochrones import get_ichrone
-from isochrones import get_ichrone
-import pandas as pd
 
 
 def get_star_photometry_from_eep(dataframe):
@@ -175,24 +108,32 @@ def get_star_photometry_from_eep(dataframe):
     - pandas DataFrame with additional columns for Gaia photometry: 'G', 'BP', 'RP'.
     """
     # Load the MIST isochrone model
-    mist = get_ichrone('mist')
+    #mist = get_ichrone('mist')
+    mist_track = MIST_EvolutionTrack()
+    #mist = MIST_Isochrone()
+
 
     # Prepare a list to store results
     results = []
 
-    for _, row in dataframe.iterrows():
+    for _, row in tqdm(dataframe.iterrows(), total=len(dataframe)):
         try:
             # Extract the necessary parameters
-            eep, age, feh = row['eep'], row['age'], row['feh']
+            eep, age, feh, mass = row['eep'], row['age'], row['feh'], row['mass']
 
             # Interpolate Gaia magnitudes
-            magnitudes = mist.interp_mag([eep, age, feh], ['G', 'BP', 'RP'])
-
+            mist_track_star = mist_track(mass, eep, feh)
+            gmag, bpmag, rpmag = mist_track_star['G_mag'], mist_track_star['BP_mag'], mist_track_star['RP_mag']
+            #teff, logg, feh, magnitudes = mist.interp_mag([eep, age, feh], ['G', 'BP', 'RP'])
+            #teff, logg, feh, magnitudes = mist_track.interp_mag([mass, eep, feh], ['G', 'BP', 'RP'])
             # Add magnitudes to the result
             result = row.to_dict()
-            result['G'] = magnitudes[0]
-            result['BP'] = magnitudes[1]
-            result['RP'] = magnitudes[2]
+            # result['G'] = magnitudes[0]
+            # result['BP'] = magnitudes[1]
+            # result['RP'] = magnitudes[2]
+            result['G'] = gmag[0]
+            result['BP'] = bpmag[0]
+            result['RP'] = rpmag[0]
 
             results.append(result)
         except Exception as e:
@@ -210,7 +151,7 @@ if __name__ == '__main__':
 
 
     # Generate population in uniform EEP for 10 stars with random parameters
-    uniform_population = generate_uniform_eep(10000)
+    uniform_population = generate_uniform_eep(1000000)
 
     # # Generate synthetic photometry for the population
     photometry = get_star_photometry_from_eep(uniform_population)

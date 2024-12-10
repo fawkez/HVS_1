@@ -1,0 +1,11 @@
+To load the docker environment that is used for AGAMA
+you have to run the container called "interesting_noether".
+
+Once the container is working in an interactive terminal
+you have to run:
+
+jupyter notebook --ip=0.0.0.0 --no-browser --allow-root --NotebookApp.token=''
+
+This will start the jupyter kernel at 127.0.0.1 withouth an auth token,
+which allows VSCode to connect to the kernel and run the scripts.
+

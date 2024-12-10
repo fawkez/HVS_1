@@ -748,7 +748,9 @@ def get_Mags(av, r, l, b, M, Met, Teff, R, Lum, dust, bands, errors):
     errs = {}
 
     T = Teff * u.K                   # Temperature of the star at t = tage [K]
-    R = (R * u.solRad).to(u.m)    # Radius of the star at t = tage [m]
+   # R = (R * u.solRad).to(u.m)    # Radius of the star at t = tage [m]
+   # I am changing this to make it compatible with the MIST models but I am not sure if this is correct
+    R = R*6.957e8 *u.m   # Radius of the star at t = tage [m]
 
     # Log of surface gravity in cgs
     logg = np.log10((const.G * M / R**2.).to(u.cm / u.s**2).value) 

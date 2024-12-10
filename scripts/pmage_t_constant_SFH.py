@@ -18,7 +18,7 @@ def loop(r_ages, lookback, flight_times, age_arr, CDF_IMF, mass_arr, SFR_arr):
     return mass_samples, age_samples
 
 
-def sample_MF_PDMF2(n_samp, Mmin=0.1, kappa = 4.1, origin_sfh = 'constant'):
+def sample_MF_PDMF2(n_samp, Mmin=0.1, kappa = 0.001, origin_sfh = 'constant'):
         from isochrones.mist import MISTEvolutionTrackGrid
         from scipy.interpolate import interp1d
         from scipy.integrate import simpson
@@ -110,7 +110,7 @@ def sample_MF_PDMF2(n_samp, Mmin=0.1, kappa = 4.1, origin_sfh = 'constant'):
         return np.array(mass_samples).flatten()*u.Msun, np.array(age_samples).flatten()*u.Gyr, flight_times*u.Gyr, present_rate
 
 if __name__ == '__main__':
-    sample = sample_MF_PDMF2( 50000, Mmin= 1, origin_sfh = 'constant')
+    sample = sample_MF_PDMF2( 1000000, Mmin= 0.3, origin_sfh = 'constant')
     mass = sample[0]
     age = sample[1]
     flight_times = sample[2]
@@ -119,4 +119,4 @@ if __name__ == '__main__':
     
     # Save the output
     table_out = Table([mass, age, flight_times], names=['mass', 'age', 'flight_time'], units=[u.Msun, u.Gyr, u.Gyr])
-    table_out.write(output_path + f'/sample_constant_SFH.fits', overwrite=True)
+    table_out.write(output_path + f'/sample_constant_SFH_k0.fits', overwrite=True)
