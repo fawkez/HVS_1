@@ -104,7 +104,8 @@ def prepare_gaia(data_gaia_big, subsample='all'):
     data_gaia_big['implied_M_g_corr_error'] = compute_absolute_magntiude(data_gaia_big['phot_g_mean_mag'], 1000/(data_gaia_big['implied_parallax']
                                                                     + data_gaia_big['implied_parallax_error']), [0])
 
-
+    # compute bp_rp_corr_error
+    #data_gaia_big['bp_rp_corr_error'] = 
     return data_gaia_big
 
 def prepare_speedystar(simulated_catalog_gaia, subsample='all'):
@@ -163,5 +164,24 @@ def prepare_speedystar(simulated_catalog_gaia, subsample='all'):
     simulated_catalog_gaia['implied_M_g_corr_error'] = compute_absolute_magntiude(simulated_catalog_gaia['phot_g_mean_mag'], 1000/(simulated_catalog_gaia['implied_parallax']
                                                                     + simulated_catalog_gaia['implied_parallax_error']), [0])
 
+    # limit the magntiude to make sure that the stars should be visible by Gaia
+    simulated_catalog_gaia = simulated_catalog_gaia.loc[simulated_catalog_gaia['phot_g_mean_mag'] < 21]
+
+    # keep only stars that are fast
+    simulated_catalog_gaia = simulated_catalog_gaia.loc[simulated_catalog_gaia['VGCR'] > 300]
+
 
     return simulated_catalog_gaia
+
+
+if __name__ == '__main__':
+    # just prepare a single speedystar catalog to test, why not??
+
+    # load catalog
+    speedycatalog_ini =  Table.read('/Users/mncavieres/Documents/2024-2/HVS/Data/speedystar_catalogs/stock_long.fits')
+
+    speedy_ready= prepare_speedystar(speedycatalog_ini)
+
+    # save as fits
+    speedy_ready = Table.from_pandas(speedy_ready)
+    speedy_ready.write('/Users/mncavieres/Documents/2024-2/HVS/Data/speedystar_catalogs/ready/stock_long_ready.fits')

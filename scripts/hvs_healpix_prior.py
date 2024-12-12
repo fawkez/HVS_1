@@ -15,8 +15,8 @@ from collections import Counter
 
 
 
-def compute_healpix(l, b, nside=4):
-    return hp.ang2pix(nside, l, b, lonlat=True)
+def compute_healpix(l, b, nside=16):
+    return hp.ang2pix(nside, l, b, lonlat=True, nest=True)
 
 def compute_prior(data, simulation_data):
 
@@ -67,7 +67,7 @@ import numpy as np
 import healpy as hp
 from collections import Counter
 
-def compute_prior_hvs(l, b, nside=4):
+def compute_prior_hvs(l, b, nside=16):
     """
     Computes the prior probability of finding a hypervelocity star (HVS) in a HEALPix pixel
     based on the fraction of HVS in each pixel relative to the total.
@@ -103,7 +103,11 @@ def compute_prior_hvs(l, b, nside=4):
     b_valid = b[valid_mask]
     
     # Compute HEALPix indices for valid HVS
-    hvs_pix = hp.ang2pix(nside, l_valid, b_valid, lonlat=True)
+    hvs_pix = hp.ang2pix(nside, l_valid, b_valid, lonlat=True, nest=True)
+    
+    npix = hp.nside2npix(nside)
+    # Initialize a map array
+    healpix_map = np.zeros(npix)
     
     # Count HVS in each pixel
     hvs_counts = Counter(hvs_pix)

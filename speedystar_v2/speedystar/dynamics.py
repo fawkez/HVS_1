@@ -458,6 +458,121 @@ def propagate_agama(self, potential, dt=0.1*u.Myr,
             self.thetaf = []*u.rad
             self.phif = []*u.rad
 
+
+def propagate_agama(self, potential, solarmotion=[-11.1, 12.24, 7.25],
+                    zo=0.0208*u.kpc, orbit_path=None, integration_time=None):
+    """
+    Propagates the sample in the Galaxy forwards or backwards in time using AGAMA.
+
+    Parameters:
+    ----------
+    potential : agama.Potential instance
+        Potential instance of AGAMA used to integrate the orbits.
+    solarmotion : length-3 list of floats
+        UVW Solar peculiar velocity in km/s. Default is Schönrich+2010.
+    zo : Float or astropy distance quantity
+        Offset of the Sun above or below the Galactic plane.
+        Default is 20.8 pc (Bennett+Bovy 2019).
+    orbit_path : None or string
+        If supplied, full Galactocentric Cartesian orbits are saved to orbit_path.
+    integration_time : Quantity (time)
+        Total integration time (negative for backwards integration). Defaults to `self.tflight`.
+    """
+
+    import agama
+    import numpy as np
+    from tqdm import tqdm
+    from astropy.coordinates import SkyCoord, Galactocentric, CartesianRepresentation
+    from astropy.table import Table
+    import os
+
+    # Set AGAMA units
+    agama.setUnits(mass=1, length=1, velocity=1)  # kpc, km/s, 1e10 M_sun
+
+    # Ensure potential is provided
+    if not isinstance(potential, agama.Potential):
+        raise ValueError("Potential must be an instance of AGAMA.Potential.")
+
+    # Default integration time if not provided
+    if integration_time is None:
+        integration_time = self.tflight
+
+    # Initialize arrays for results
+    self.x, self.y, self.z = (np.zeros(self.size) * u.kpc for _ in range(3))
+    self.vx, self.vy, self.vz = (np.zeros(self.size) * u.km / u.s for _ in range(3))
+    self.ra, self.dec = (np.zeros(self.size) * u.deg for _ in range(2))
+    self.dist = np.zeros(self.size) * u.kpc
+    self.pmra, self.pmdec = (np.zeros(self.size) * u.mas / u.yr for _ in range(2))
+    self.pmb, self.pml = (np.zeros(self.size) * u.mas / u.yr for _ in range(2))
+    self.Lz = np.zeros(self.size) * (u.kpc * u.km / u.s)
+
+    # Loop over orbits
+    for i in tqdm(range(self.size), desc='Propagating...'):
+        # Initialize position in cylindrical coordinates
+        rho = self.r0[i] * np.sin(self.theta0[i])
+        z = self.r0[i] * np.cos(self.theta0[i])
+        phi = self.phi0[i]
+        phiv0 = self.phiv0[i]
+
+        # Initialize velocity in cylindrical coordinates
+        vx = self.v0[i] * np.sin(self.thetav0[i]) * np.cos(phiv0)
+        vy = self.v0[i] * np.sin(self.thetav0[i]) * np.sin(phiv0)
+        vz = self.v0[i] * np.cos(self.thetav0[i])
+
+        # Cartesian conversion
+        x = rho * np.cos(phi)
+        y = rho * np.sin(phi)
+        vR = vx * np.sin(phi + 0.5 * np.pi) + vy * np.sin(phi)
+        vT = vx * np.cos(phi + 0.5 * np.pi) + vy * np.cos(phi)
+
+        # Prepare initial conditions for AGAMA
+        ic = np.array([x, y, z, vx, vy, vz])
+
+        # Integrate orbit using AGAMA with adaptive steps
+        traj = agama.orbit(potential=potential, ic=ic, time=integration_time.to('Gyr').value)
+
+        # Extract final position and velocity
+        final_pos = traj[-1, :3]
+        final_vel = traj[-1, 3:]
+
+        # Store Cartesian coordinates
+        self.x[i], self.y[i], self.z[i] = final_pos * u.kpc
+        self.vx[i], self.vy[i], self.vz[i] = final_vel * u.km / u.s
+
+        # Compute proper motions and angular momentum
+        galactic_coord = SkyCoord(
+            x=final_pos[0] * u.kpc, y=final_pos[1] * u.kpc, z=final_pos[2] * u.kpc,
+            v_x=final_vel[0] * u.km/u.s, v_y=final_vel[1] * u.km/u.s, v_z=final_vel[2] * u.km/u.s,
+            representation_type=CartesianRepresentation,
+            frame=Galactocentric
+        )
+
+        icrs_coord = galactic_coord.transform_to('icrs')
+        self.ra[i] = icrs_coord.ra
+        self.dec[i] = icrs_coord.dec
+        self.pmra[i] = icrs_coord.pm_ra_cosdec
+        self.pmdec[i] = icrs_coord.pm_dec
+        self.dist[i] = icrs_coord.distance
+
+        self.Lz[i] = self.x[i] * self.vy[i] - self.y[i] * self.vx[i]
+
+        galactic_frame = galactic_coord.transform_to('galactic')
+        self.pmb[i] = galactic_frame.pm_b
+        self.pml[i] = galactic_frame.pm_l_cosb
+
+        # Save orbit data if path is provided
+        if orbit_path:
+            os.makedirs(orbit_path, exist_ok=True)
+            datalist = [traj[:, 0], traj[:, 1], traj[:, 2], traj[:, 3], traj[:, 4], traj[:, 5]]
+            namelist = ['x', 'y', 'z', 'vx', 'vy', 'vz']
+            data_table = Table(data=datalist, names=namelist)
+            data_table.write(os.path.join(orbit_path, f"orbit_{i}.fits"), overwrite=True)
+
+    # Mark propagation as complete
+    self.propagated = True
+
+
+
 #@get_vesc
 def get_vesc(self, potential):
 

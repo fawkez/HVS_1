@@ -87,9 +87,10 @@ def change_imf_weights(mass, alpha_ini, alpha_new, min_mass = 0.5, max_mass = 1e
 
 class BayesianKDEClassifier:
 
-    def __init__(self, speedy_catalog, gaia_catalog, threshold=0.9, bandwidth=0.1, imf = None, ejection_rate = 1e-5):
+    def __init__(self, speedy_catalog, gaia_catalog, threshold=0.9, bandwidth=0.1, imf = None):
 
-        self.nside = 4
+        healpix_level = 4
+        self.nside = 2**healpix_level
 
         self.imf = imf
 
@@ -119,7 +120,7 @@ class BayesianKDEClassifier:
         Y_not_class = self.gaia_catalog['implied_M_g_corr'].values
 
         # Calculate prior probabilities
-        n_hvs_pixel = (len(self.speedy_catalog)/self.total_n_hvs)*ejection_rate*13.5*1e9
+        n_hvs_pixel = (len(self.speedy_catalog)/self.total_n_hvs)*56.9
         self.p_class = n_hvs_pixel/(n_hvs_pixel + len(self.gaia_catalog))
         self.p_not_class = 1 - self.p_class
 
@@ -150,20 +151,21 @@ class BayesianKDEClassifier:
         the script in a HEALPix basis.
         """
         # select a star in the gaia data
-        l, b = self.gaia_catalog['l'], self.gaia_catalog['b'] 
+        l, b = self.gaia_catalog['l'].values[10], self.gaia_catalog['b'].values[10]
 
         # obtain the HEALPix pixel of the Gaia catalog
         healpix_pixel = ang2pix(self.nside, l, b, lonlat= True)
+        self.healpix_pixel = healpix_pixel
 
         # if the speedystar catalog does not have the "HEALPix" column compute it
         if 'HEALPix' in self.speedy_catalog.columns:
             pass
         else:
-            self.speedy_catalog['HEALPix'] = ang2pix(self.speedy_catalog.l, self.speedy_catalog.b, lonlat= True)
+            self.speedy_catalog['HEALPix'] = ang2pix(self.nside, self.speedy_catalog.l, self.speedy_catalog.b, lonlat= True)
              
 
         # select only sources in the speedy catalog that match with the healpix of the gaia catalog
-        self.speedy_catalog = self.speedy_catalog.loc[self.speedy_catalog['HEALPix'] == healpix_pixel]
+        self.speedy_catalog = self.speedy_catalog.loc[self.speedy_catalog['HEALPix'].values == healpix_pixel]
 
    
     def compute_kde_grid(self, x_range=(-1, 2.5), y_range=(-7, 15), resolution=100):

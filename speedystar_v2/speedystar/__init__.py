@@ -14,7 +14,7 @@ import numpy as np
 #    raise ImportError(__ImportError__)
 
 from .eject import EjectionModel
-from .eject import HillsfromCatalog
+#from .eject import HillsfromCatalog
 #from .utils.mwpotential import PotDiff
 
 class starsample:
