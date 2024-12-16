@@ -433,3 +433,4 @@ speedystar/speedystar/utils/mwdust3/
 *.tex
 MultiNest/
 Plots/*
+/Notebooks/selections/frames/*

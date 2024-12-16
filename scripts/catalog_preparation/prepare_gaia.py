@@ -108,7 +108,7 @@ def prepare_gaia(data_gaia_big, subsample='all'):
     #data_gaia_big['bp_rp_corr_error'] = 
     return data_gaia_big
 
-def prepare_speedystar(simulated_catalog_gaia, subsample='all'):
+def prepare_speedystar(simulated_catalog_gaia, subsample='all', filter_fast = False):
     """ 
     Prepare the speedystar catalog for classification by computing implied quantities and adding extinction corrections
     and setting the columns to match the Gaia DR3 catalog.
@@ -156,10 +156,11 @@ def prepare_speedystar(simulated_catalog_gaia, subsample='all'):
 
     # compute the implied absolute magnitude
     simulated_catalog_gaia['implied_M_g'] = simulated_catalog_gaia['phot_g_mean_mag'] - 5*np.log10(1000/simulated_catalog_gaia['implied_parallax']) + 5
-
+   
     # correct the absolute magnitude for extinction
     simulated_catalog_gaia['implied_M_g_corr'] = simulated_catalog_gaia['implied_M_g'] - simulated_catalog_gaia['A_G']
-    
+    simulated_catalog_gaia['M_g_corr'] = simulated_catalog_gaia['phot_g_mean_mag'] - 5*np.log10(simulated_catalog_gaia['dist']*1000) + 5 - simulated_catalog_gaia['A_G']
+
     # compute the implied absolute magnitude error
     simulated_catalog_gaia['implied_M_g_corr_error'] = compute_absolute_magntiude(simulated_catalog_gaia['phot_g_mean_mag'], 1000/(simulated_catalog_gaia['implied_parallax']
                                                                     + simulated_catalog_gaia['implied_parallax_error']), [0])
@@ -167,8 +168,9 @@ def prepare_speedystar(simulated_catalog_gaia, subsample='all'):
     # limit the magntiude to make sure that the stars should be visible by Gaia
     simulated_catalog_gaia = simulated_catalog_gaia.loc[simulated_catalog_gaia['phot_g_mean_mag'] < 21]
 
-    # keep only stars that are fast
-    simulated_catalog_gaia = simulated_catalog_gaia.loc[simulated_catalog_gaia['VGCR'] > 300]
+    # keep only stars that are fast, this should actually be done after the preparations in a filtering section
+    if filter_fast:
+        simulated_catalog_gaia = simulated_catalog_gaia.loc[simulated_catalog_gaia['VGCR'] > 300]
 
 
     return simulated_catalog_gaia
