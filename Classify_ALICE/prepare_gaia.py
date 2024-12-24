@@ -41,10 +41,10 @@ from astropy.coordinates.matrix_utilities import (
 )
 
 # Custom script imports
-sys.path.append('/Users/mncavieres/Documents/2024-2/HVS')  # Add scripts folder to path
-from scripts.implied_d_vr import *  # Import specific functions or classes as needed
-from scripts.selections import *
-from scripts.CMD_selection import *
+#sys.path.append('/Users/mncavieres/Documents/2024-2/HVS')  # Add scripts folder to path
+from implied_d_vr import *  # Import specific functions or classes as needed
+from selections import *
+#from CMD_selection import *
 
 # Matplotlib configuration
 plt.rcParams.update({

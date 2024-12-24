@@ -11,12 +11,12 @@ from astropy.table import Table
 import sys
 
 # Custom script imports, this needs to be changed for it to work on ALICE
-sys.path.append('/Users/mncavieres/Documents/2024-2/HVS')  # Add scripts folder to path
-from scripts.implied_d_vr import *  # Import specific functions or classes as needed
-from scripts.selections import *
-from scripts.CMD_selection import *
-from scripts.catalog_preparation.prepare_gaia import *
-from scripts.misc.fft_kde import WeightedFFTKDE
+#sys.path.append('/Users/mncavieres/Documents/2024-2/HVS')  # Add scripts folder to path
+from implied_d_vr import *  # Import specific functions or classes as needed
+from selections import *
+#from CMD_selection import *
+from prepare_gaia import *
+from fft_kde import WeightedFFTKDE
 from classifier import BayesianKDEClassifier
 
 def process_path(path):
@@ -119,12 +119,19 @@ def process_path(path):
 
 
 if __name__ == '__main__':
-    # Define paths
-    output_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/Classification_test/output" # This is the path in which we will save those that pass with 90% confidence
-    gaia_catalogs_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/gaia_by_healpix" # This is the path within ALICE for the Gaia data
-    processed_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/Classification_test/processed_catalog" # Here we will basically put a copy of the Gaia catalog but with the added columns in case we want to change the confidence level or whatever
+    # Define paths for local run
+    # output_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/Classification_test/output" # This is the path in which we will save those that pass with 90% confidence
+    # gaia_catalogs_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/gaia_by_healpix" # This is the path within ALICE for the Gaia data
+    # processed_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/Classification_test/processed_catalog" # Here we will basically put a copy of the Gaia catalog but with the added columns in case we want to change the confidence level or whatever
+    # simulation_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/speedystar_catalogs/stock_long_ready.fits" # This should be the simulation that we will use to train the classifier
 
-    simulation_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/speedystar_catalogs/stock_long.fits" # This should be the simulation that we will use to train the classifier
+    # # Define paths for ALICE run
+    main_data_path = '/home/cavierescarreramc/data1'
+    output_path = os.path.join(main_data_path, 'candidates_90')
+    gaia_catalogs_path = os.path.join(main_data_path, 'gaia_dr3_photometric_uncertainties')
+    process_path = os.path.join(main_data_path,'gaia_dr3_processed' )
+    simulation_path = '/home/cavierescarreramc/data1/simulated_catalogs/prepared/stock_long_ready.fits'
+
 
     # Define the healpix pixel level, which defines the NSIDE parameter and the number of pixels, this has to stay the same because this is how the data was donwloaded
     healpix_level = 4
@@ -143,6 +150,8 @@ if __name__ == '__main__':
     else: # if it has already been processed we only need to turn it into a dataframe
         speedycatalog = speedycatalog.to_pandas()
 
+    # save the catalog to not have to do it again
+    #Table.from_pandas(speedycatalog).write('/Users/mncavieres/Documents/2024-2/HVS/Data/speedystar_catalogs/stock_long_ready.fits')
         
     # Loop over the pixels
     for healpix_pixel in tqdm(np.arange(0, npix+1)):
@@ -152,7 +161,7 @@ if __name__ == '__main__':
 
         # Check if the data is already downloaded
         if not os.path.exists(catalog_path):
-            #print(f"File does not exist, skipping")
+            print(f"File does not exist, skipping")
             # skip this iteration
             continue
 

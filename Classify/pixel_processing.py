@@ -19,6 +19,8 @@ from scripts.catalog_preparation.prepare_gaia import *
 from scripts.misc.fft_kde import WeightedFFTKDE
 from classifier import BayesianKDEClassifier
 
+import time
+
 def process_path(path):
     global speedycatalog
     global processed_path
@@ -164,6 +166,6 @@ if __name__ == '__main__':
             #print(f"File does not exist, skipping")
             # skip this iteration
             continue
-
+        
         # process
         process_path(catalog_path)

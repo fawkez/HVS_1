@@ -9,10 +9,13 @@ from scipy.interpolate import RegularGridInterpolator
 from tqdm import tqdm
 
 # Add the path to the 'scripts' folder directly
-#sys.path.append('/Users/mncavieres/Documents/2024-2/HVS')
+sys.path.append('/Users/mncavieres/Documents/2024-2/HVS')
 
 
-
+# Now you can import from the 'scripts' package
+from scripts.implied_d_vr import *  # Or import any other module
+from scripts.selections import *
+from scripts.CMD_selection import *
 
 
 # Standard library imports
@@ -28,12 +31,12 @@ import matplotlib.pyplot as plt
 # Astropy imports
 
 # Custom script imports, need to find a way to make this work on ALICE
-#sys.path.append('/Users/mncavieres/Documents/2024-2/HVS')  # Add scripts folder to path
-from implied_d_vr import *  # Import specific functions or classes as needed
-from selections import *
-
-from catalog_preparation.prepare_gaia import *
-from fft_kde import WeightedFFTKDE
+sys.path.append('/Users/mncavieres/Documents/2024-2/HVS')  # Add scripts folder to path
+from scripts.implied_d_vr import *  # Import specific functions or classes as needed
+from scripts.selections import *
+from scripts.CMD_selection import *
+from scripts.catalog_preparation.prepare_gaia import *
+from scripts.misc.fft_kde import WeightedFFTKDE
 
 from healpy import ang2pix
 
@@ -130,7 +133,7 @@ class BayesianKDEClassifier:
         XY_not_class = np.vstack([X_not_class, Y_not_class]).T
 
         self.kde_class = KernelDensity(kernel='gaussian', bandwidth=self.base_bandwidth).fit(XY_class)
-        self.kde_not_class = KernelDensity(kernel='gaussian', bandwidth=self.base_bandwidth).fit(XY_not_class)
+        self.kde_not_class = KernelDensity(kernel='gaussian', bandwidth=self.base_bandwidth*5).fit(XY_not_class)
 
         # for grid interpolation
         self.X_class = X_class

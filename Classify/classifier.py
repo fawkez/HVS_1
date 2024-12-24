@@ -133,7 +133,7 @@ class BayesianKDEClassifier:
         XY_not_class = np.vstack([X_not_class, Y_not_class]).T
 
         self.kde_class = KernelDensity(kernel='gaussian', bandwidth=self.base_bandwidth).fit(XY_class)
-        self.kde_not_class = KernelDensity(kernel='gaussian', bandwidth=self.base_bandwidth).fit(XY_not_class)
+        self.kde_not_class = KernelDensity(kernel='gaussian', bandwidth=self.base_bandwidth*5).fit(XY_not_class)
 
         # for grid interpolation
         self.X_class = X_class
@@ -572,7 +572,7 @@ class BayesianKDEClassifier:
         fig, ax = plt.subplots(1, 3, figsize=(20, 6))
 
         # Plot the "class" data
-        ax[0].scatter(self.X_class, self.Y_class, s=1, c='blue', alpha=0.5)
+        ax[0].scatter(self.X_class, self.Y_class, s=1, c='blue', alpha=0.1)
         cbar_1 = ax[0].contourf(X_mesh, Y_mesh, np.exp(log_p_data_given_hvs).reshape(resolution, resolution),
                                 cmap='Blues', levels=20, alpha=0.6)
         ax[0].set_title('HVS KDE')
@@ -582,7 +582,7 @@ class BayesianKDEClassifier:
         ax[0].set_ylabel("$G_{I}$")
 
         # Plot the "not class" data
-        ax[1].scatter(self.X_not_class, self.Y_not_class, s=1, c='red', alpha=0.5)
+        ax[1].scatter(self.X_not_class, self.Y_not_class, s=1, c='red', alpha=0.1)
         cbar_2 = ax[1].contourf(X_mesh, Y_mesh, np.exp(log_p_data_given_not_hvs).reshape(resolution, resolution),
                                 cmap='Reds', levels=30, alpha=0.6)
         ax[1].set_title('Non-HVS KDE')
@@ -593,7 +593,7 @@ class BayesianKDEClassifier:
 
         # Plot the division of the two KDEs
         division = (np.exp(log_p_data_given_hvs) / np.exp(log_p_data_given_not_hvs)).reshape(resolution, resolution)
-        cbar_3 = ax[2].contourf(X_mesh, Y_mesh, division, cmap='coolwarm', levels=30, alpha=0.6)
+        cbar_3 = ax[2].contourf(X_mesh, Y_mesh, division, cmap='coolwarm', levels=30, alpha=0.6, norm = 'log')
         ax[2].set_title('HVS/Non-HVS KDE Ratio')
         ax[2].set_xlim(x_range)
         ax[2].set_ylim(y_range)
@@ -691,7 +691,7 @@ def flux_to_mag(flux):
 if __name__ == '__main__':
     # fit the KDE with a training catalog and plot it
 
-    simulation_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/speedystar_catalogs/stock_long.fits" # This should be the simulation that we will use to train the classifier
+    simulation_path = '/Users/mncavieres/Documents/2024-2/HVS/Data/speedystar_catalogs/stock_long_ready.fits'#"/Users/mncavieres/Documents/2024-2/HVS/Data/speedystar_catalogs/stock_long.fits" # This should be the simulation that we will use to train the classifier
 
     # Define the healpix pixel level, which defines the NSIDE parameter and the number of pixels, this has to stay the same because this is how the data was donwloaded
     healpix_level = 4
@@ -749,7 +749,7 @@ if __name__ == '__main__':
 
     print('Computing KDE grid for interpolations')
     # pre-compute the KDE grid so that evaluations are actually interpolations
-    classifier.compute_kde_grid(x_range=(-1, 2), y_range=(-7, 9), resolution=100)
+    #classifier.compute_kde_grid(x_range=(-1, 2), y_range=(-7, 9), resolution=100)
 
     print('Plotting')
     # plot the posterior for a grid of points
