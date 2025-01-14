@@ -584,6 +584,61 @@ def integrate_orbits_to_plane_crossing_agama_parallel(
     return closest_origins
 
 
+def compute_orbit_to_apocenter(r_i, v_ej, theta, phi, potential_file='Agama/brown2015.pot', t_step=1e-3):
+    """
+    Compute the orbit trajectory and velocities up to the apocenter.
+
+    Parameters:
+        r_i (float): Initial radius in pc.
+        v_ej (float): Ejection velocity in km/s.
+        theta (float): Angle from the Z-axis in degrees.
+        phi (float): Angle from the X-axis to the projection in the galactic plane in degrees.
+        potential_file (str): Path to the potential file for the integration.
+        t_step (float): Integration step in Gyr.
+
+    Returns:
+        tuple: Arrays of positions (x, y, z) and velocities (vx, vy, vz) up to the apocenter.
+    """
+    # Load the potential
+    potential = agama.Potential(file=potential_file)
+    
+    # Convert angles to radians
+    theta_rad = np.radians(theta)
+    phi_rad = np.radians(phi)
+    
+    # Convert spherical to Cartesian coordinates
+    x = r_i * np.sin(theta_rad) * np.cos(phi_rad)
+    y = r_i * np.sin(theta_rad) * np.sin(phi_rad)
+    z = r_i * np.cos(theta_rad)
+    vx = v_ej * np.sin(theta_rad) * np.cos(phi_rad)
+    vy = v_ej * np.sin(theta_rad) * np.sin(phi_rad)
+    vz = v_ej * np.cos(theta_rad)
+    
+    # Define the initial state
+    initial_state = [x, y, z, vx, vy, vz]
+    
+    # Integration settings
+    t_max = (300 * u.kpc / (v_ej * u.km / u.s)).to(u.Gyr).value  # Convert max time to Gyr
+    times = np.arange(0, t_max, t_step)
+    
+    # Integrate orbit
+    orbit = agama.orbit(potential=potential, ic=initial_state, time=t_max, dtype = object)#, trajsize=int(t_max/t_step))
+
+    # Extract trajectory and velocities
+    positions = orbit(orbit)[:, :3]
+    velocities = orbit(orbit)[:, 3:]
+
+    # Find the apocenter
+    radial_distances = np.linalg.norm(positions, axis=1)  # Compute radial distances
+    apocenter_index = np.argmax(radial_distances)  # Find the index of the apocenter
+    
+    # Slice the results up to the apocenter
+    positions_to_apocenter = positions[:apocenter_index + 1]
+    velocities_to_apocenter = velocities[:apocenter_index + 1]
+    
+    return positions_to_apocenter, velocities_to_apocenter
+
+
 if __name__ == '__main__':
     potential = agama.Potential(file='Agama/brown2015.pot')  # Adjust file path if needed
 
