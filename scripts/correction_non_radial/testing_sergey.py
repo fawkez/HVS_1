@@ -25,7 +25,7 @@ def doit(vej, cosang, t):
     startpos = np.array([cosang, 0, sinang]) * auni.kpc
     vel = np.array([cosang, 0, sinang]) * vej
     w0 = gd.PhaseSpacePosition(startpos, vel=vel * kms)
-    nsteps = 20000
+    nsteps = 30000
     timestep = t * auni.Myr / nsteps
     orbit = gp.Hamiltonian(pot).integrate_orbit(
         w0,
@@ -43,7 +43,7 @@ def doit(vej, cosang, t):
 
 def doall(N=10000, seed=3):
     rng = np.random.default_rng(seed)
-    vej = 10**rng.uniform(2.8, 3.5, size=N)
+    vej = 10**rng.uniform(2.6, 3.5, size=N)
     cosa = rng.uniform(0, 1, size=N)
     times = 100
     r1, r2, r3, r4 = [], [], [], []
@@ -58,13 +58,13 @@ def doall(N=10000, seed=3):
 
 print('Starting')
 # Do the simulation
-R, z, VR, Vz = doall(10000, 3)
+R, z, VR, Vz = doall(20000, 3)
 
 print('Simulation Done')
 
 # Plot it
-xbins = 50  # bins in z
-ybins = 50  # bins in log10(VR)
+xbins = 70  # bins in z
+ybins = 70  # bins in log10(VR)
 
 zf = z.flatten()
 VRf = VR.flatten()

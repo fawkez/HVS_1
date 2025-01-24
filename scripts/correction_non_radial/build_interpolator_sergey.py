@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import pickle
+import numpy as np
 
 # Load the data
 print('Loading data')
@@ -39,12 +40,12 @@ interp_func = RegularGridInterpolator(
     stat,                   # The mean ratio table on that grid
     method='linear',        # or 'nearest', 'cubic', etc.
     bounds_error=False,     # If False, points outside will not raise an error...
-    fill_value=np.nan       # ...and will return NaN. (You can choose 0 or None, etc.)
+    fill_value=None    # ...and will return NaN. (You can choose 0 or None, etc.)
 )
 print('Interpolator constructed')
 # save the interpolator
 # Save the interpolator to a file
-with open('/Users/mncavieres/Documents/2024-2/HVS/Data/vz_interpolator/vz_rf_vr_sergey.pkl', 'wb') as f:
+with open('/Users/mncavieres/Documents/2024-2/HVS/Data/vz_interpolator/vz_rf_vr_sergey_extrapolate.pkl', 'wb') as f:
     pickle.dump(interp_func, f)
 
 

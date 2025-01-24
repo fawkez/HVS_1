@@ -363,9 +363,9 @@ def compute_correction_velocity(Vz, mu, n, R0xez, ez, D_I):
         float: The correction term for the radial velocity
     """
     #print(n.shape, R0xez.shape, mu.shape, ez.shape)
-    numerator = Vz* np.dot(n, R0xez)+ D_I*Vz*np.dot(mu, np.cross(n.T, ez))
+    numerator = Vz* np.dot(mu, R0xez)+ D_I*Vz*np.dot(mu, np.cross(n.T, ez)) # just changed the first from n.R0xez to np.dot(mu, R0xez)
     
-    nxR = -np.cross(n.T, R0).T
+    nxR = -np.cross(n.T, R0).T # Not sure if this needs a minus sign or not
 
     denominator = np.dot(mu, nxR)
     return numerator/denominator
@@ -535,8 +535,8 @@ def getdist_corrected(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, Vz):
     # assemble the n vector as it is needed for the correction term
     n = np.array([n0, n1, n2])
 
-    # compute correction to distance, we added a minus because the numerator is negative
-    D += compute_correction_distance(Vz, n, R0xez, dot_mu_R0n)
+    # compute correction to distance, we added a minus because the denominator is inverted to the equations we have in the overleaf
+    D -= compute_correction_distance(Vz, n, R0xez, dot_mu_R0n)
 
     # Next, compute VR_i and VGCR_i as in your original code
     nV0  = V0[0]*n0 + V0[1]*n1 + V0[2]*n2
@@ -570,6 +570,7 @@ def getdist_corrected(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, Vz):
 
 # load the interpolator 
 with open('/Users/mncavieres/Documents/2024-2/HVS/Data/vz_interpolator/vz_rf_vr_sergey.pkl', 'rb') as f:
+#with open('/Users/mncavieres/Documents/2024-2/HVS/Data/vz_interpolator/vz_rf_vr_sergey_extrapolate.pkl', 'rb') as f:
     interpolator_vz = pickle.load(f)
 
 def do_iteration(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, D_i, Vr):
@@ -620,7 +621,7 @@ def iterative_correction(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s,
         
         VGCR, VR, Darr = do_iteration(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s,  Darr, VR)
         
-        D_for_it.append([Darr])
+        D_for_it.append(Darr)
         
     return VGCR, VR, Darr, D_for_it
         

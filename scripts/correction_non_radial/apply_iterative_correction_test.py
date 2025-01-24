@@ -26,7 +26,7 @@ from astropy.table import Table
 
 
 # lets test with some speedystar data
-data = Table.read('Data/speedystar_catalogs/stock/phot_no_extinction_prop/cat_ejection_0.fits')#.to_pandas()
+data = Table.read('/Users/mncavieres/Documents/2024-2/HVS/Data/speedystar_catalogs/stock_long.fits')#Table.read('Data/speedystar_catalogs/stock/phot_no_extinction_prop/cat_ejection_0.fits')#.to_pandas()
 
 
 # just select 10 points
@@ -71,7 +71,8 @@ print('It took:', (end - start)/len(data_ready), 'for each source')
 # save results
 data_ready['VGCR_corrected'] = VGCR
 data_ready['VR_corrected'] = VR
-data_ready['D_corrected'] = Darr
+data_ready['D_corrected'] = Darr*u.m.to(u.kpc)
+#data_ready['implied_distance'] = data_ready['implied_distance']*u.m.to(u.kpc)
 
 # iteratively save the distances for each iteration
 #print(np.array(D_for_it[2, :]).shape)
@@ -79,9 +80,10 @@ data_ready['D_corrected'] = Darr
 #print(len(D_for_it[0]))
 for i, dist in enumerate(D_for_it):
     #print(dist[0])
-    print(dist[0])
-    data_ready[f'D_corrected_{i}'] = dist[0]
+    #print(dist)
+    data_ready[f'D_corrected_{i}'] = dist*u.m.to(u.kpc)
 
 
 # save the data
-data_ready.to_csv('Data/speedystar_catalogs/stock_long_corrected.csv')
+#data_ready.to_csv('Data/speedystar_catalogs/stock_long_corrected.csv')
+Table.from_pandas(data_ready).write('Data/speedystar_catalogs/stock_long_corrected.fits', format='fits', overwrite=True)
