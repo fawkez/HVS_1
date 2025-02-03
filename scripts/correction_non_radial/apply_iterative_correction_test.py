@@ -86,4 +86,4 @@ for i, dist in enumerate(D_for_it):
 
 # save the data
 #data_ready.to_csv('Data/speedystar_catalogs/stock_long_corrected.csv')
-Table.from_pandas(data_ready).write('Data/speedystar_catalogs/stock_long_corrected.fits', format='fits', overwrite=True)
+Table.from_pandas(data_ready).write('Data/speedystar_catalogs/stock_long_corrected_test.fits', format='fits', overwrite=True)

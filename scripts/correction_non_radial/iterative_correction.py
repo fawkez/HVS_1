@@ -223,37 +223,6 @@ def compute_R0_V0_SI():
     return R0, V0
 
 
-# def cross_2D(a, b):
-#     """
-#     Vectorized cross product for two arrays of shape (N,3),
-#     returning shape (N,3).
-#     """
-#     return np.column_stack((
-#         a[:,1]*b[:,2] - a[:,2]*b[:,1],
-#         a[:,2]*b[:,0] - a[:,0]*b[:,2],
-#         a[:,0]*b[:,1] - a[:,1]*b[:,0]
-#     ))
-
-# def cross_2D(a, b):
-#     """
-#     Vectorized cross product for two arrays of shape (N,3),
-#     returning shape (N,3).
-#     """
-#     return np.cross(a.T, b)
-
-# # def dot_2D(a, b):
-# #     """
-# #     Vectorized dot product for two arrays of shape (N,3),
-# #     returning shape (N,). 
-# #     """
-# #     return a[:,0]*b[:,0] + a[:,1]*b[:,1] + a[:,2]*b[:,2]
-
-# def dot_2D(a, b):
-#     """
-#     Vectorized dot product for two arrays of shape (N,3),
-#     returning shape (N,).
-#     """
-#     return np.einsum('ij,i->j', a, b)
 def dot_2D(a, b):
     """Handles dot product between vectors of shape (3, N) and (3,)."""
     if a.ndim == 2:  # If `a` has shape (3, N)
@@ -344,72 +313,116 @@ def compute_correction_distance(Vz, n, R0xez, denominator):
         float: The correction term for the implied distance
     """
     #print(n.shape, R0xez.shape)
-    return Vz * dot_2D(n, R0xez) / denominator
+    return Vz * dot_2D(n, R0xez) / (denominator)
 
-def compute_correction_velocity(Vz, mu, n, R0xez, ez, D_I):
-    global R0
-    """
-    Computes the correction term for the radial velocity by considering a velocity component in the galactic Z direction
+# def compute_correction_velocity(Vz, mu, n, R0xez, ez, D_I):
+#     global R0
+#     """
+#     Computes the correction term for the radial velocity by considering a velocity component in the galactic Z direction
 
-    Parameters:
-        Vz (float): Velocity component in the galactic Z direction in SI units
-        mu (array): Proper motion of the star in the ICRS coordinate system and SI units
-        n (array): Normal vector from the sun to the source in the ICRS coordinate system (unit vector, from RA, DEC)
-        R0xez (array): Cross product of the vector from the galactic center to the sun and the unit vector in the galactic Z direction in ICRS coordinate system and SI units
-        ez (array): Unit vector in the galactic Z direction (orthogonal to the plane of the disk) in the ICRS coordinate system
-        D_I (float): Implied distance in SI units
+#     Parameters:
+#         Vz (float): Velocity component in the galactic Z direction in SI units
+#         mu (array): Proper motion of the star in the ICRS coordinate system and SI units
+#         n (array): Normal vector from the sun to the source in the ICRS coordinate system (unit vector, from RA, DEC)
+#         R0xez (array): Cross product of the vector from the galactic center to the sun and the unit vector in the galactic Z direction in ICRS coordinate system and SI units
+#         ez (array): Unit vector in the galactic Z direction (orthogonal to the plane of the disk) in the ICRS coordinate system
+#         D_I (float): Implied distance in SI units
 
-    Returns:
-        float: The correction term for the radial velocity
-    """
-    #print(n.shape, R0xez.shape, mu.shape, ez.shape)
-    numerator = Vz* np.dot(mu, R0xez)+ D_I*Vz*np.dot(mu, np.cross(n.T, ez)) # just changed the first from n.R0xez to np.dot(mu, R0xez)
+#     Returns:
+#         float: The correction term for the radial velocity
+#     """
+#     #print(n.shape, R0xez.shape, mu.shape, ez.shape)
+#     numerator = Vz* np.dot(mu, R0xez)+ D_I*Vz*np.dot(mu, np.cross(n.T, ez)) # just changed the first from n.R0xez to np.dot(mu, R0xez)
     
-    nxR = -np.cross(n.T, R0).T # Not sure if this needs a minus sign or not
+#     nxR = -np.cross(n.T, R0).T # Not sure if this needs a minus sign or not
 
-    denominator = np.dot(mu, nxR)
-    return numerator/denominator
+#     denominator = np.dot(mu, nxR)
+#     return numerator/denominator
 
 
-import numpy as np
+# import numpy as np
+
+# def compute_correction_velocity(Vz, mu, n, R0xez, ez, D_I):
+#     """
+#     Computes the correction term for the radial velocity by considering a velocity component in the galactic Z direction.
+
+#     Parameters:
+#         Vz (float): Velocity component in the galactic Z direction in SI units.
+#         mu (array): Proper motion of the star in the ICRS coordinate system, shape (3, N), in SI units.
+#         n (array): Normal vector from the Sun to the source in the ICRS coordinate system (unit vector, from RA, DEC), shape (3, N).
+#         R0xez (array): Cross product of the vector from the galactic center to the Sun and the unit vector in the galactic Z direction in the ICRS coordinate system, shape (3,).
+#         ez (array): Unit vector in the galactic Z direction (orthogonal to the plane of the disk) in the ICRS coordinate system, shape (3,).
+#         D_I (array): Implied distance in SI units, shape (N,).
+
+#     Returns:
+#         array: The correction term for the radial velocity, shape (N,).
+#     """
+#     # Compute dot product of R0xez and n for each star
+#     R0xez_dot_n = np.einsum('i,ij->j', R0xez, n)  # Shape (N,)
+
+#     # Compute cross product of n and ez, then dot with mu
+#     mu_cross_n_ez = np.cross(n.T, ez).T  # Shape (3, N)
+#     mu_dot_cross_n_ez = np.einsum('ij,ij->j', mu, mu_cross_n_ez)  # Shape (N,)
+
+#     # Calculate the numerator
+#     numerator = Vz * R0xez_dot_n + D_I * Vz * mu_dot_cross_n_ez
+
+#     # Compute cross product of n and R0
+#     nxR = -np.cross(n.T, R0).T  # Shape (3, N)
+
+#     # Dot product of mu and nxR
+#     mu_dot_nxR = np.einsum('ij,ij->j', mu, nxR)  # Shape (N,)
+
+#     # Calculate the denominator
+#     denominator = mu_dot_nxR
+
+#     # Final correction velocity
+#     correction_velocity = numerator / denominator
+
+#     return correction_velocity
+
 
 def compute_correction_velocity(Vz, mu, n, R0xez, ez, D_I):
     """
-    Computes the correction term for the radial velocity by considering a velocity component in the galactic Z direction.
-
+    Computes the correction term for the radial velocity by considering a 
+    velocity component in the galactic Z direction.
+    
+    According to the derivation, the correction is:
+    
+        ΔV_r = [ Vz * (mu·(R0 × ez)) + D_I * Vz * (mu·(n × ez)) ]
+               / [ mu·(R0 × n) ]
+    
     Parameters:
-        Vz (float): Velocity component in the galactic Z direction in SI units.
-        mu (array): Proper motion of the star in the ICRS coordinate system, shape (3, N), in SI units.
-        n (array): Normal vector from the Sun to the source in the ICRS coordinate system (unit vector, from RA, DEC), shape (3, N).
-        R0xez (array): Cross product of the vector from the galactic center to the Sun and the unit vector in the galactic Z direction in the ICRS coordinate system, shape (3,).
-        ez (array): Unit vector in the galactic Z direction (orthogonal to the plane of the disk) in the ICRS coordinate system, shape (3,).
-        D_I (array): Implied distance in SI units, shape (N,).
-
+        Vz (float): Velocity component in the galactic Z direction (SI units).
+        mu (array): Proper motion vector in ICRS, shape (3, N) [SI units].
+        n (array): Unit vector from the Sun to the source in ICRS, shape (3, N).
+        R0xez (array): Cross product of R0 and ez, shape (3,).
+        ez (array): Unit vector in the galactic Z direction in ICRS, shape (3,).
+        D_I (array): Implied distance (from the strictly radial solution), shape (N,).
+    
     Returns:
-        array: The correction term for the radial velocity, shape (N,).
+        array: Correction term for the radial velocity, shape (N,).
     """
-    # Compute dot product of R0xez and n for each star
-    R0xez_dot_n = np.einsum('i,ij->j', R0xez, n)  # Shape (N,)
+    global R0
+    # --- Corrected First Term ---
+    # According to the derivation the first term must be: Vz * (mu · (R0 x ez))
+    R0xez_dot_mu = np.einsum('i,ij->j', R0xez, mu)  # shape (N,)
+    
+    # --- Second Term ---
+    # Compute cross product of n and ez, then dot with mu:
+    mu_cross_n_ez = np.cross(n.T, ez).T  # shape (3, N)
+    mu_dot_cross_n_ez = np.einsum('ij,ij->j', mu, mu_cross_n_ez)  # shape (N,)
+    
+    # Numerator: Vz*(mu·(R0 x ez)) + D_I * Vz*(mu·(n x ez))
+    numerator = Vz * R0xez_dot_mu + D_I * Vz * mu_dot_cross_n_ez
 
-    # Compute cross product of n and ez, then dot with mu
-    mu_cross_n_ez = np.cross(n.T, ez).T  # Shape (3, N)
-    mu_dot_cross_n_ez = np.einsum('ij,ij->j', mu, mu_cross_n_ez)  # Shape (N,)
-
-    # Calculate the numerator
-    numerator = Vz * R0xez_dot_n + D_I * Vz * mu_dot_cross_n_ez
-
-    # Compute cross product of n and R0
-    nxR = -np.cross(n.T, R0).T  # Shape (3, N)
-
-    # Dot product of mu and nxR
-    mu_dot_nxR = np.einsum('ij,ij->j', mu, nxR)  # Shape (N,)
-
-    # Calculate the denominator
-    denominator = mu_dot_nxR
-
-    # Final correction velocity
-    correction_velocity = numerator / denominator
-
+    # --- Denominator ---
+    # Compute mu · (R0 × n).  Note that -np.cross(n, R0) equals (R0 × n).
+    nxR = -np.cross(n.T, R0).T  # shape (3, N)
+    mu_dot_nxR = np.einsum('ij,ij->j', mu, nxR)  # shape (N,)
+    
+    # Final correction:
+    correction_velocity = numerator / mu_dot_nxR
     return correction_velocity
 
 
@@ -418,7 +431,7 @@ R0, V0 = compute_R0_V0_SI()
 R0xez = compute_R0xez(R0)
 ez = compute_ez()
 
-def getdist_corrected(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, Vz):
+def getdist_corrected(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, Vz, l, b):
     
     # give access to the global variables
     global R0, V0, R0xez, ez
@@ -536,7 +549,10 @@ def getdist_corrected(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, Vz):
     n = np.array([n0, n1, n2])
 
     # compute correction to distance, we added a minus because the denominator is inverted to the equations we have in the overleaf
-    D -= compute_correction_distance(Vz, n, R0xez, dot_mu_R0n)
+    if b > 0: # This is required since the Vz in the interpolator is only negative, so we need to reflect the sign of the correction term if b > 0
+        D += compute_correction_distance(Vz, n, R0xez, dot_mu_R0n)
+    else:
+        D -= compute_correction_distance(Vz, n, R0xez, dot_mu_R0n)
 
     # Next, compute VR_i and VGCR_i as in your original code
     nV0  = V0[0]*n0 + V0[1]*n1 + V0[2]*n2
@@ -587,6 +603,10 @@ def do_iteration(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, D_i, Vr):
     x, y, z = skycoord.transform_to('galactocentric').cartesian.xyz.to(u.kpc).value
     vx, vy, _ = skycoord.transform_to('galactocentric').velocity.d_xyz.to(u.km/u.s).value
 
+    # get galactic coordinates
+    l, b = skycoord.galactic.l.value, skycoord.galactic.b.value
+
+    # get the galactocentric distance
     R_gc = (x**2 + y**2 + z**2)**0.5
     
     # interpolate to get vz/r*vr
@@ -602,7 +622,7 @@ def do_iteration(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, D_i, Vr):
     vz = vz * 1000 # convert to m/s
 
     # compute the correction term ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, Vz
-    VGCR, VR, D_i = getdist_corrected(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, vz)
+    VGCR, VR, D_i = getdist_corrected(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, vz, l)
     
     return VGCR, VR, D_i
 
