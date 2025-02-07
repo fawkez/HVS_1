@@ -14,10 +14,12 @@ zf = data['z'].values
 VRf = data['VR'].values
 Vzf = data['Vz'].values
 
-xbins = 50  # bins in z/R
-ybins = 50  # bins in log10(VR)
+xbins = 100  # bins in z/R
+ybins = 100  # bins in log10(VR)
 
 print('Computing 2d statistic')
+print('Range of log10(R):', np.min(np.log10(Rf)), np.max(np.log10(Rf))) 
+print('Range of z/R:', np.min(zf/Rf), np.max(zf/Rf))
 
 stat, xedges, yedges, binnum = binned_statistic_2d(
     y= zf/Rf, # to avoid log(0) we add a small number

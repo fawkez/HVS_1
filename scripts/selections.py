@@ -1,21 +1,11 @@
 # imports
 import os
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 import time
 
-from astropy.io import fits
 from astropy.table import Table
 from astropy import units as u
-import astropy.coordinates as coord
-from astropy.coordinates import SkyCoord, Galactocentric, ICRS
-from astropy.constants import kpc, au
-from astropy.coordinates import CartesianRepresentation, CartesianDifferential
-from astropy.coordinates.matrix_utilities import rotation_matrix, matrix_product, matrix_transpose
-from numba import njit
-import astropy
+from astropy.coordinates import SkyCoord
 
 
 

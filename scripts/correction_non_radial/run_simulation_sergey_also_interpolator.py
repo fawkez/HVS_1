@@ -63,8 +63,8 @@ R, z, VR, Vz = doall(20000, 3)
 print('Simulation Done')
 
 # Plot it
-xbins = 70  # bins in z
-ybins = 70  # bins in log10(VR)
+xbins = 100  # bins in z
+ybins = 100  # bins in log10(VR)
 
 zf = z.flatten()
 VRf = VR.flatten()

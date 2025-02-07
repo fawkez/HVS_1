@@ -315,72 +315,6 @@ def compute_correction_distance(Vz, n, R0xez, denominator):
     #print(n.shape, R0xez.shape)
     return Vz * dot_2D(n, R0xez) / (denominator)
 
-# def compute_correction_velocity(Vz, mu, n, R0xez, ez, D_I):
-#     global R0
-#     """
-#     Computes the correction term for the radial velocity by considering a velocity component in the galactic Z direction
-
-#     Parameters:
-#         Vz (float): Velocity component in the galactic Z direction in SI units
-#         mu (array): Proper motion of the star in the ICRS coordinate system and SI units
-#         n (array): Normal vector from the sun to the source in the ICRS coordinate system (unit vector, from RA, DEC)
-#         R0xez (array): Cross product of the vector from the galactic center to the sun and the unit vector in the galactic Z direction in ICRS coordinate system and SI units
-#         ez (array): Unit vector in the galactic Z direction (orthogonal to the plane of the disk) in the ICRS coordinate system
-#         D_I (float): Implied distance in SI units
-
-#     Returns:
-#         float: The correction term for the radial velocity
-#     """
-#     #print(n.shape, R0xez.shape, mu.shape, ez.shape)
-#     numerator = Vz* np.dot(mu, R0xez)+ D_I*Vz*np.dot(mu, np.cross(n.T, ez)) # just changed the first from n.R0xez to np.dot(mu, R0xez)
-    
-#     nxR = -np.cross(n.T, R0).T # Not sure if this needs a minus sign or not
-
-#     denominator = np.dot(mu, nxR)
-#     return numerator/denominator
-
-
-# import numpy as np
-
-# def compute_correction_velocity(Vz, mu, n, R0xez, ez, D_I):
-#     """
-#     Computes the correction term for the radial velocity by considering a velocity component in the galactic Z direction.
-
-#     Parameters:
-#         Vz (float): Velocity component in the galactic Z direction in SI units.
-#         mu (array): Proper motion of the star in the ICRS coordinate system, shape (3, N), in SI units.
-#         n (array): Normal vector from the Sun to the source in the ICRS coordinate system (unit vector, from RA, DEC), shape (3, N).
-#         R0xez (array): Cross product of the vector from the galactic center to the Sun and the unit vector in the galactic Z direction in the ICRS coordinate system, shape (3,).
-#         ez (array): Unit vector in the galactic Z direction (orthogonal to the plane of the disk) in the ICRS coordinate system, shape (3,).
-#         D_I (array): Implied distance in SI units, shape (N,).
-
-#     Returns:
-#         array: The correction term for the radial velocity, shape (N,).
-#     """
-#     # Compute dot product of R0xez and n for each star
-#     R0xez_dot_n = np.einsum('i,ij->j', R0xez, n)  # Shape (N,)
-
-#     # Compute cross product of n and ez, then dot with mu
-#     mu_cross_n_ez = np.cross(n.T, ez).T  # Shape (3, N)
-#     mu_dot_cross_n_ez = np.einsum('ij,ij->j', mu, mu_cross_n_ez)  # Shape (N,)
-
-#     # Calculate the numerator
-#     numerator = Vz * R0xez_dot_n + D_I * Vz * mu_dot_cross_n_ez
-
-#     # Compute cross product of n and R0
-#     nxR = -np.cross(n.T, R0).T  # Shape (3, N)
-
-#     # Dot product of mu and nxR
-#     mu_dot_nxR = np.einsum('ij,ij->j', mu, nxR)  # Shape (N,)
-
-#     # Calculate the denominator
-#     denominator = mu_dot_nxR
-
-#     # Final correction velocity
-#     correction_velocity = numerator / denominator
-
-#     return correction_velocity
-
 
 def compute_correction_velocity(Vz, mu, n, R0xez, ez, D_I):
     """
@@ -549,10 +483,14 @@ def getdist_corrected(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, Vz, l, b):
     n = np.array([n0, n1, n2])
 
     # compute correction to distance, we added a minus because the denominator is inverted to the equations we have in the overleaf
-    if b > 0: # This is required since the Vz in the interpolator is only negative, so we need to reflect the sign of the correction term if b > 0
-        D += compute_correction_distance(Vz, n, R0xez, dot_mu_R0n)
-    else:
-        D -= compute_correction_distance(Vz, n, R0xez, dot_mu_R0n)
+    # if b > 0: # This is required since the Vz in the interpolator is only negative, so we need to reflect the sign of the correction term if b > 0
+    #     D += compute_correction_distance(Vz, n, R0xez, dot_mu_R0n)
+    # else:
+    #     D -= compute_correction_distance(Vz, n, R0xez, dot_mu_R0n)
+
+    # removed this since it is better to invert Vz as a function of b before calling this function
+
+    D += compute_correction_distance(Vz, n, R0xez, dot_mu_R0n)
 
     # Next, compute VR_i and VGCR_i as in your original code
     nV0  = V0[0]*n0 + V0[1]*n1 + V0[2]*n2
@@ -591,7 +529,7 @@ with open('/Users/mncavieres/Documents/2024-2/HVS/Data/vz_interpolator/vz_rf_vr_
 
 def do_iteration(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, D_i, Vr):
     
-    D_i = np.maximum(D_i, 0)
+    D_i = np.maximum(D_i, 0) # this is here to prevent negative distance errors
 
     distances = Distance(D_i, unit=u.m, allow_negative=True)
     # make skycoord object
