@@ -18,14 +18,34 @@ kms = auni.km / auni.s
 acoo.galactocentric_frame_defaults.set('latest')
 
 
+# def doit(vej, cosang, t):
+#     #cosang = np.cos(ang)
+#     #sinang = np.sin(ang)
+#     sinang = np.sqrt(1 - cosang**2)
+#     startpos = np.array([cosang, 0, sinang]) * auni.kpc
+#     vel = np.array([cosang, 0, sinang]) * vej
+#     w0 = gd.PhaseSpacePosition(startpos, vel=vel * kms)
+#     nsteps = 30000
+#     timestep = t * auni.Myr / nsteps
+#     orbit = gp.Hamiltonian(pot).integrate_orbit(
+#         w0,
+#         dt=timestep,
+#         n_steps=nsteps,
+#         Integrator=gi.DOPRI853Integrator,
+#         # Integrator_kwargs = dict(atol=1e-15,rtol=1e-15)
+#     )
+#     R = (orbit.x**2 + orbit.z**2 + orbit.y**2)**.5
+#     z = orbit.z.to_value(auni.kpc)
+#     VR = orbit.v_x * R / orbit.x # this is some decomposition of the velocity in a weird way
+#     Vz = orbit.v_z - orbit.v_x * orbit.z / orbit.x
+#     return R.to_value(auni.kpc), z, VR.to_value(kms), Vz.to_value(kms)
 def doit(vej, cosang, t):
-    #cosang = np.cos(ang)
-    #sinang = np.sin(ang)
     sinang = np.sqrt(1 - cosang**2)
-    startpos = np.array([cosang, 0, sinang]) * auni.kpc
+    # start from 10 pc radius
+    startpos = np.array([cosang, 0, sinang]) * 0.01 * auni.kpc
     vel = np.array([cosang, 0, sinang]) * vej
     w0 = gd.PhaseSpacePosition(startpos, vel=vel * kms)
-    nsteps = 30000
+    nsteps = 10000
     timestep = t * auni.Myr / nsteps
     orbit = gp.Hamiltonian(pot).integrate_orbit(
         w0,
@@ -36,10 +56,9 @@ def doit(vej, cosang, t):
     )
     R = (orbit.x**2 + orbit.z**2 + orbit.y**2)**.5
     z = orbit.z.to_value(auni.kpc)
-    VR = orbit.v_x * R / orbit.x # this is some decomposition of the velocity in a weird way
+    VR = orbit.v_x * R / orbit.x
     Vz = orbit.v_z - orbit.v_x * orbit.z / orbit.x
     return R.to_value(auni.kpc), z, VR.to_value(kms), Vz.to_value(kms)
-
 
 def doall(N=10000, seed=3):
     rng = np.random.default_rng(seed)

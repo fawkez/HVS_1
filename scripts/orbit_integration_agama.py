@@ -111,6 +111,7 @@ def plot_sigma_contours(origins, xlim=(-60, 60), ylim=(-60, 60), bw_method='scot
     if show:
         plt.show()
 
+# comentario pal ramiro
 
 
 def plot_sigma_contours_m(origins, xlim=(-60, 60), ylim=(-60, 60), bw_method='scott', save = False, star_name='star', save_path = 'Plots/brown_stars/brown_potential'):
