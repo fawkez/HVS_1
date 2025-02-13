@@ -24,7 +24,7 @@ print('Range of z/R:', np.min(zf/Rf), np.max(zf/Rf))
 stat, xedges, yedges, binnum = binned_statistic_2d(
     y= zf/Rf, # to avoid log(0) we add a small number
     x=np.log10(Rf),
-    values=Vzf/Rf*VRf,
+    values=(Vzf/Rf)*VRf,
     statistic='mean',
     bins=[xbins, ybins]
 )
