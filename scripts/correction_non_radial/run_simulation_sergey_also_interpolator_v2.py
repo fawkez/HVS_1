@@ -17,13 +17,14 @@ kms = auni.km / auni.s
 
 acoo.galactocentric_frame_defaults.set('latest')
 
-
 def doit(vej, cosang, t):
     sinang = np.sqrt(1 - cosang**2)
     # start from 10 pc radius
-    startpos = np.array([cosang, 0, sinang]) * 0.03 * auni.kpc
+    startpos = np.array([cosang, 0, sinang]) * 0.01 * auni.kpc
     vel = np.array([cosang, 0, sinang]) * vej
     w0 = gd.PhaseSpacePosition(startpos, vel=vel * kms)
+    
+    # First integration to find the apoapsis
     nsteps = 10000
     timestep = t * auni.Myr / nsteps
     orbit = gp.Hamiltonian(pot).integrate_orbit(
@@ -31,17 +32,42 @@ def doit(vej, cosang, t):
         dt=timestep,
         n_steps=nsteps,
         Integrator=gi.DOPRI853Integrator,
-        # Integrator_kwargs = dict(atol=1e-15,rtol=1e-15)
     )
-    R = (orbit.x**2 + orbit.z**2 + orbit.y**2)**.5
-    z = orbit.z.to_value(auni.kpc)
-    VR = orbit.v_x * R / orbit.x
-    Vz = orbit.v_z - orbit.v_x * orbit.z / orbit.x
+    
+    # Find the apoapsis point where vx changes sign
+    vx = orbit.v_x.to_value(kms)
+    apoapsis_indices = np.where(np.diff(np.sign(vx)))[0]
+    
+    if len(apoapsis_indices) == 0:
+        # If no apoapsis is found, return the initial orbit
+        R = (orbit.x**2 + orbit.z**2 + orbit.y**2)**.5
+        z = orbit.z.to_value(auni.kpc)
+        VR = orbit.v_x * R / orbit.x
+        Vz = orbit.v_z - orbit.v_x * orbit.z / orbit.x
+        return R.to_value(auni.kpc), z, VR.to_value(kms), Vz.to_value(kms)
+    
+    apoapsis_index = apoapsis_indices[0]
+    apoapsis_time = orbit.t[apoapsis_index]
+    
+    # Second integration up to apoapsis time with 10000 points
+    nsteps_apoapsis = 10000
+    timestep_apoapsis = apoapsis_time / nsteps_apoapsis
+    orbit_apoapsis = gp.Hamiltonian(pot).integrate_orbit(
+        w0,
+        dt=timestep_apoapsis,
+        n_steps=nsteps_apoapsis,
+        Integrator=gi.DOPRI853Integrator,
+    )
+    
+    R = (orbit_apoapsis.x**2 + orbit_apoapsis.z**2 + orbit_apoapsis.y**2)**.5
+    z = orbit_apoapsis.z.to_value(auni.kpc)
+    VR = orbit_apoapsis.v_x * R / orbit_apoapsis.x
+    Vz = orbit_apoapsis.v_z - orbit_apoapsis.v_x * orbit_apoapsis.z / orbit_apoapsis.x
     return R.to_value(auni.kpc), z, VR.to_value(kms), Vz.to_value(kms)
 
 def doall(N=10000, seed=3):
     rng = np.random.default_rng(seed)
-    vej = 10**rng.uniform(2.6, 3.5, size=N)
+    vej = 10**rng.uniform(2.8, 3.5, size=N)
     cosa = rng.uniform(0, 1, size=N)
     times = 100
     r1, r2, r3, r4 = [], [], [], []
@@ -56,13 +82,13 @@ def doall(N=10000, seed=3):
 
 print('Starting')
 # Do the simulation
-R, z, VR, Vz = doall(20000, 3)
+R, z, VR, Vz = doall(10000, 3)
 
 print('Simulation Done')
 
 # Plot it
-xbins = 100  # bins in z
-ybins = 100  # bins in log10(VR)
+xbins = 70  # bins in z
+ybins = 70  # bins in log10(VR)
 
 zf = z.flatten()
 VRf = VR.flatten()
@@ -70,13 +96,13 @@ Vzf = Vz.flatten()
 Rf = R.flatten()
 
 # save the data
-#data= pd.DataFrame({'R':Rf, 'z':zf, 'VR':VRf, 'Vz':Vzf})
-#data.to_csv('/Users/mncavieres/Documents/2024-2/HVS/Data/orbits/gala_ejections/gala_ejections_10000_3.csv')
+data= pd.DataFrame({'R':Rf, 'z':zf, 'VR':VRf, 'Vz':Vzf})
+data.to_csv('/Users/mncavieres/Documents/2024-2/HVS/Data/orbits/gala_ejections/gala_ejections_10000_4.csv')
 
 stat, xedges, yedges, binnum = binned_statistic_2d(
     y= zf/Rf, # to avoid log(0) we add a small number
     x=np.log10(Rf),
-    values=Vzf/Rf*VRf,
+    values=Vzf*VRf/Rf,
     statistic='mean',
     bins=[xbins, ybins]
 )
@@ -98,7 +124,7 @@ interp_func = RegularGridInterpolator(
 
 # save the interpolator
 # Save the interpolator to a file
-with open('/Users/mncavieres/Documents/2024-2/HVS/Data/vz_interpolator/vz_rf_vr_sergey.pkl', 'wb') as f:
+with open('/Users/mncavieres/Documents/2024-2/HVS/Data/vz_interpolator/vz_rf_vr_sergey_v2.pkl', 'wb') as f:
     pickle.dump(interp_func, f)
 
 
