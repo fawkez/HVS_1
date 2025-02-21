@@ -44,7 +44,7 @@ def process_path(path, healpix_pixel):
     gaia_catalog = Table.read(path)
 
     # load the prior map
-    prior = pd.read_csv('/Users/mncavieres/Documents/2024-2/HVS/Data/prior_map.csv')
+    prior = pd.read_csv('/Users/mncavieres/Documents/2024-2/HVS/Classify/V2/Prior_map.csv') # this is hardcoded,. not good
 
     # check that it is not empty and skip if it is
     if len(gaia_catalog) == 0:
@@ -54,29 +54,19 @@ def process_path(path, healpix_pixel):
     # make sure that this column exists
     gaia_catalog['bp_rp'] = gaia_catalog['phot_bp_mean_mag'] - gaia_catalog['phot_rp_mean_mag']
 
+    print('Processing HEALPix pixel', healpix_pixel)
+    print('Catalog has', len(gaia_catalog), 'sources')
     # prepare the gaia catalog by computing implied quantities, correcting extinction, etc.
     gaia_catalog = prepare_gaia_iterative(gaia_catalog) # now gaia_catalog should have all the implied magnitudes and extinction corrections necessary for classificaiton
 
-    # first cut, remove stars with inconsistent parallax
-    gaia_catalog = gaia_catalog.loc[parallax_consistency(gaia_catalog.parallax, 
-                                                                 gaia_catalog.parallax_error, 
-                                                                 gaia_catalog.implied_parallax,
-                                                                 gaia_catalog.implied_parallax_error)]
-    
-    # second cut, remove stars that are too slow to be a hypervelocity star
-    gaia_catalog = gaia_catalog.loc[is_fast(gaia_catalog.VGCR, lower_limit=300)]
-
-    # third cut, limit extinction to a sensible range, but still big
-    gaia_catalog = gaia_catalog.loc[gaia_catalog['A_G'] < 3]
-
     # fourth cut, limit the color and magntiude range to a sensible space that also allows the KDE to fit correcty
     # particularly the extinction correctio is only valid within the bp-rp range -0.5 to 2.5, we will extend a bit because of the assumption that stars are beyond the extinction layer
-    gaia_catalog = gaia_catalog.loc[(gaia_catalog['bp_rp_corr'] > -1.2) &
-                                     (gaia_catalog['bp_rp_corr'] < 2.5) &
-                                       (gaia_catalog['implied_M_g_corr'] > -8) &
-                                         (gaia_catalog['implied_M_g_corr'] < 9)].copy()
+    # gaia_catalog = gaia_catalog.loc[(gaia_catalog['bp_rp_corr'] > -1.2) &
+    #                                  (gaia_catalog['bp_rp_corr'] < 2.5) &
+    #                                    (gaia_catalog['implied_M_g_corr'] > -8) &
+    #                                      (gaia_catalog['implied_M_g_corr'] < 9)].copy()
 
-
+    print('Catalog has', len(gaia_catalog), 'sources after preparing')
     # initialize classifier
     x_hvs = speedycatalog['bp_rp_corr']
     y_hvs = speedycatalog['implied_M_g_corr']
@@ -100,12 +90,12 @@ def process_path(path, healpix_pixel):
     # pix = hp.ang2pix(nside, theta, phi, lonlat=False, nest=True)
 
     # get the prior for this pixel
-    prior_pixel = prior.loc[prior.healpix_pixel == healpix_pixel]
-    if len(prior_pixel) == 0:
-        print('No prior for this pixel')
-        prior_pixel = 0
+    prior_pixel = prior.loc[prior.pixel_nest == healpix_pixel]['prior'].values[0]
+    # if len(prior_pixel) == 0:
+    #     print('No prior for this pixel')
+    #     prior_pixel = 0
 
-
+    print('Prior for this pixel is', prior_pixel)
     # classify
     p_hvs, p_bg, p_data = classifier.classify(gaia_catalog['bp_rp_corr'],
                                                gaia_catalog['implied_M_g_corr'], 
@@ -121,16 +111,33 @@ def process_path(path, healpix_pixel):
     gaia_catalog['healpix_pixel'] = healpix_pixel
 
     # save
-    save_with_prob_path = os.path.join(processed_path, f'{classifier.healpix_pixel}.fits')
+    save_with_prob_path = os.path.join(processed_path, f'{healpix_pixel}.fits')
+    # check that the directory exists
+    if not os.path.exists(processed_path):
+        os.makedirs(processed_path)
     print('Saving catalog to ', save_with_prob_path)
     Table.from_pandas(gaia_catalog).write(save_with_prob_path, overwrite = True)
 
     # select sources that pass the classification
-    hvs_candidates = gaia_catalog.loc[gaia_catalog.p_hvs > 0.9]
+     # first cut, remove stars with inconsistent parallax
+    gaia_catalog = gaia_catalog.loc[parallax_consistency(gaia_catalog.parallax, 
+                                                                 gaia_catalog.parallax_error, 
+                                                                 gaia_catalog.implied_parallax,
+                                                                 gaia_catalog.implied_parallax_error)]
+    
+    # second cut, remove stars that are too slow to be a hypervelocity star
+    gaia_catalog = gaia_catalog.loc[is_fast(gaia_catalog.VGCR, lower_limit=300)]
+
+    # third cut, limit extinction to a sensible range, but still big
+    gaia_catalog = gaia_catalog.loc[gaia_catalog['A_G'] < 3]
+
+    hvs_candidates = gaia_catalog.loc[gaia_catalog.p_hvs > 0.5]
     if len(hvs_candidates > 0):
         # save
-        candidate_path = os.path.join(output_path,f'candidates_{classifier.healpix_pixel}.fits')
-        print(f'A total of {len(hvs_candidates)} were found in HEALPix pixel {classifier.healpix_pixel}')
+        candidate_path = os.path.join(output_path,f'candidates_{healpix_pixel}.fits')
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+        print(f'A total of {len(hvs_candidates)} were found in HEALPix pixel {healpix_pixel}')
         print('Saved to', candidate_path)
         Table.from_pandas(hvs_candidates).write(candidate_path, overwrite = True)
     else:
@@ -139,9 +146,9 @@ def process_path(path, healpix_pixel):
 
 if __name__ == '__main__':
     # Define paths for local run
-    output_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/Classification_test/output" # This is the path in which we will save those that pass with 90% confidence
+    output_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/Classification_test_v2/output" # This is the path in which we will save those that pass with 90% confidence
     gaia_catalogs_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/gaia_by_healpix" # This is the path within ALICE for the Gaia data
-    processed_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/Classification_test/processed_catalog" # Here we will basically put a copy of the Gaia catalog but with the added columns in case we want to change the confidence level or whatever
+    processed_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/Gaia_tests/Classification_test_v2/processed_catalog" # Here we will basically put a copy of the Gaia catalog but with the added columns in case we want to change the confidence level or whatever
     simulation_path = "/Users/mncavieres/Documents/2024-2/HVS/Data/speedystar_catalogs/stock_long.fits" # This should be the simulation that we will use to train the classifier
 
     # # Define paths for ALICE run

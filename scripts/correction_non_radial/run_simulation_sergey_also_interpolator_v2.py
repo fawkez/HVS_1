@@ -36,7 +36,7 @@ def doit(vej, cosang, t):
     
     # Find the apoapsis point where vx changes sign
     vx = orbit.v_x.to_value(kms)
-    apoapsis_indices = np.where(np.diff(np.sign(vx)))[0]
+    apoapsis_indices = np.where(np.diff(np.sign(vx)))[0] # this gives the first index where vx changes sign, so the first apocenter
     
     if len(apoapsis_indices) == 0:
         # If no apoapsis is found, return the initial orbit

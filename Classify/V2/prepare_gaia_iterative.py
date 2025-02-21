@@ -122,8 +122,8 @@ def prepare_gaia_iterative(data_gaia_big, subsample='all'):
     # compute implied quantities 
     data_gaia_big = implied_calculations(data_gaia_big)
 
-    # keep only positive implied parallaxes
-    data_gaia_big = data_gaia_big.loc[data_gaia_big['implied_parallax'] > 0]
+    # keep only positive implied parallaxes, commented because it was removing too many stars
+    #data_gaia_big = data_gaia_big.loc[data_gaia_big['implied_parallax'] > 0]
 
     # add extinction correction
     data_gaia_big = extinction_correction(data_gaia_big)

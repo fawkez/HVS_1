@@ -27,7 +27,7 @@ def doit(vej, cosang, t):
     w0 = gd.PhaseSpacePosition(startpos, vel=vel * kms)
     
     # First integration to find the apoapsis
-    nsteps = 10000
+    nsteps = 20000
     timestep = t * auni.Myr / nsteps
     orbit = gp.Hamiltonian(pot).integrate_orbit(
         w0,
@@ -52,7 +52,7 @@ def doit(vej, cosang, t):
     apoapsis_time = orbit.t[apoapsis_index]
     
     # Second integration up to apoapsis time with 10000 points
-    nsteps_apoapsis = 10000
+    nsteps_apoapsis = nsteps
     timestep_apoapsis = apoapsis_time / nsteps_apoapsis
     orbit_apoapsis = gp.Hamiltonian(pot).integrate_orbit(
         w0,
@@ -89,9 +89,9 @@ R, z, VR, Vz = doall(10000, 3)
 print('Simulation Done')
 
 # Plot it
-xbins = 100  # bins in z
-ybins = 100  # bins in log10(VR)
-zbins = 100  # bins in R
+xbins = 100  # bins in log10(R)
+ybins = 100  # bins in log10(VR*Vz/R)
+zbins = 5  # bins in log10(VR)
 
 zf = z.flatten()
 VRf = VR.flatten()
