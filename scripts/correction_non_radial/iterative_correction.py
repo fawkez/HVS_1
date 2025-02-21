@@ -11,6 +11,8 @@ import pandas as pd
 from tqdm import tqdm
 from scipy.interpolate import RegularGridInterpolator
 import pickle
+from scipy.interpolate import UnivariateSpline
+
 
 # set galactocentric frame to latest
 astropy.coordinates.galactocentric_frame_defaults.set('latest')
@@ -523,11 +525,16 @@ def getdist_corrected(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, Vz, l, b):
     return VGCR, VR, Darr
 
 # load the interpolator 
-with open('/Users/mncavieres/Documents/2024-2/HVS/Data/vz_interpolator/vz_rf_vr_sergey.pkl', 'rb') as f:
+with open('/Users/mncavieres/Documents/2024-2/HVS/Data/vz_interpolator/vz_rf_vr_sergey_v2.pkl', 'rb') as f:
 #with open('/Users/mncavieres/Documents/2024-2/HVS/Data/vz_interpolator/vz_rf_vr_sergey_extrapolate.pkl', 'rb') as f:
     interpolator_vz = pickle.load(f)
 
+#with open('/Users/mncavieres/Documents/2024-2/HVS/Data/vz_interpolator/offset_spline.pkl', 'rb') as f:
+#    interpolator_offset = pickle.load(f)
+
+
 def do_iteration(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, D_i, Vr):
+    global interpolator_vz, interpolator_offset
     
     D_i = np.maximum(D_i, 0) # this is here to prevent negative distance errors
 
@@ -555,19 +562,26 @@ def do_iteration(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, D_i, Vr):
     vz_rvr = interpolator_vz(points)
     #vz_rvr = interpolator_vz(logR, z/R_gc)
 
-    V_r_sergey = vx * R_gc/x #VR = orbit.v_x * R / orbit.x, this corresponds to a non-orthogonal decomposition of the velocity in radial and vz components
-    vz = vz_rvr * V_r_sergey/R_gc
+    V_r_sergey = ((vx**2 + vy**2)**0.5) * R_gc/(x**2 + y**2)**0.5  #VR = orbit.v_x * R / orbit.x, this corresponds to a non-orthogonal decomposition of the velocity in radial and vz components
+    vz = vz_rvr * R_gc/V_r_sergey
+
+    # compensate for offset using the spline
+    corrected_vz = vz# - interpolator_offset(vz)
+
+    # for objects with b < 0 make corrected_vz negative
+    corrected_vz[b < 0] = -corrected_vz[b < 0]
+
     vz = vz * 1000 # convert to m/s
 
     # compute the correction term ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, Vz
-    VGCR, VR, D_i = getdist_corrected(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, vz, l)
+    VGCR, VR, D_i = getdist_corrected(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, corrected_vz, l, b)
     
     return VGCR, VR, D_i
 
 def iterative_correction(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s,
                        epmra_rad_s, epmdec_rad_s):
     
-    D_for_it = []
+    #D_for_it = []
     global R0, V0, R0xez, ez
     # compute initial distance and velocity
     plx, eplx, VGCR, VR, Darr, eDarr = getdist_vectorized2(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s,
@@ -579,9 +593,50 @@ def iterative_correction(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s,
         
         VGCR, VR, Darr = do_iteration(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s,  Darr, VR)
         
-        D_for_it.append(Darr)
+        #D_for_it.append(Darr)
         
-    return VGCR, VR, Darr, D_for_it
+    return VGCR, VR, Darr, eDarr
+
+
         
 
+def implied_calculations(data):
+    # Convert positions to radians
+    ra_rad = np.deg2rad(data['ra'])
+    dec_rad = np.deg2rad(data['dec'])
+
+    # Convert proper motions to radians per second
+    masyr_to_radsec = (1 * u.mas / u.yr).to(u.rad / u.s).value
+    pmra_rad_s = data['pmra'] * masyr_to_radsec
+    pmdec_rad_s = data['pmdec'] * masyr_to_radsec
+    epmra_rad_s = data['pmra_error'] * masyr_to_radsec
+    epmdec_rad_s = data['pmdec_error'] * masyr_to_radsec
+
+    # Compute R0 and V0 in SI units (meters and meters per second)
+    #print('Computing R0 and V0...')
+    R0_SI, V0_SI = compute_R0_V0_SI()
+
+    # Run iterative distance calculation
+    VGCR, VR, Darr, eDarr =  iterative_correction(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, epmra_rad_s, epmdec_rad_s) # we set pmra_error and pmdec_error to 0 because they are 0
     
+    # VGCR and VR are in m/s, convert to km/s
+    VGCR_kms = VGCR / 1000
+    VR_kms = VR / 1000
+
+    # D is in meters, convert to pc
+    D_pc = Darr * u.m.to(u.pc)
+    eD_pc = eDarr * u.m.to(u.pc)
+
+    # Compute implied parallax and its error
+    plx_mas = 1 / D_pc # 1/pc should give mas
+    eplx_mas = eD_pc / D_pc**2 # error propagation for 1/x, it should be in mas
+
+    # Save the results to a new table
+    data['implied_parallax'] = plx_mas #mas
+    data['implied_parallax_error'] = eplx_mas #mas
+    data['VGCR'] = VGCR_kms
+    data['VR'] = VR_kms
+    data['implied_distance'] = D_pc
+    data['implied_distance_error'] = eD_pc
+
+    return data

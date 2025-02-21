@@ -69,7 +69,7 @@ def doall(N=10000, seed=3):
     rng = np.random.default_rng(seed)
     vej = 10**rng.uniform(2.8, 3.5, size=N)
     cosa = rng.uniform(0, 1, size=N)
-    times = 100
+    times = 300
     r1, r2, r3, r4 = [], [], [], []
     for curv, curc in tqdm(zip(vej, cosa), total=N):
         R, z, VR, Vz = doit(curv, curc, times)
@@ -82,13 +82,13 @@ def doall(N=10000, seed=3):
 
 print('Starting')
 # Do the simulation
-R, z, VR, Vz = doall(10000, 3)
+R, z, VR, Vz = doall(20000, 3)
 
 print('Simulation Done')
 
 # Plot it
-xbins = 70  # bins in z
-ybins = 70  # bins in log10(VR)
+xbins = 100  # bins in z
+ybins = 100  # bins in log10(VR)
 
 zf = z.flatten()
 VRf = VR.flatten()
@@ -96,8 +96,8 @@ Vzf = Vz.flatten()
 Rf = R.flatten()
 
 # save the data
-data= pd.DataFrame({'R':Rf, 'z':zf, 'VR':VRf, 'Vz':Vzf})
-data.to_csv('/Users/mncavieres/Documents/2024-2/HVS/Data/orbits/gala_ejections/gala_ejections_10000_4.csv')
+#data= pd.DataFrame({'R':Rf, 'z':zf, 'VR':VRf, 'Vz':Vzf})
+#data.to_csv('/Users/mncavieres/Documents/2024-2/HVS/Data/orbits/gala_ejections/gala_ejections_10000_4.csv')
 
 stat, xedges, yedges, binnum = binned_statistic_2d(
     y= zf/Rf, # to avoid log(0) we add a small number
@@ -119,12 +119,12 @@ interp_func = RegularGridInterpolator(
     stat,                   # The mean ratio table on that grid
     method='linear',        # or 'nearest', 'cubic', etc.
     bounds_error=False,     # If False, points outside will not raise an error...
-    fill_value=np.nan       # ...and will return NaN. (You can choose 0 or None, etc.)
+    fill_value=0       # ...and will return NaN. (You can choose 0 or None, etc.)
 )
 
 # save the interpolator
 # Save the interpolator to a file
-with open('/Users/mncavieres/Documents/2024-2/HVS/Data/vz_interpolator/vz_rf_vr_sergey_v2.pkl', 'wb') as f:
+with open('/Users/mncavieres/Documents/2024-2/HVS/Data/vz_interpolator/vz_rf_vr_sergey_v2_return0.pkl', 'wb') as f:
     pickle.dump(interp_func, f)
 
 
@@ -137,4 +137,5 @@ cb.set_label(r'$V_z/R*V_R$ ')
 plt.xlabel(r'$\log_{10}(R)$')
 plt.ylabel(r'$z/R$')
 plt.tight_layout()
+plt.savefig('/Users/mncavieres/Documents/2024-2/HVS/Plots/interpolator/vi.png')
 plt.show()
