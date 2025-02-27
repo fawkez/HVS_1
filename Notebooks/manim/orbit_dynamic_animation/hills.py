@@ -6,8 +6,7 @@ class OrbitAnimation(MovingCameraScene):
     def construct(self):
         # Load the orbital data from a text file using Table.read.
         t_r_v = Table.read(
-            '/Users/mncavieres/Documents/2024-2/HVS/Notebooks/manim/orbit_data_finner.txt',
-            #'/Users/mncavieres/Documents/2024-2/HVS/Notebooks/manim/orbit_data.txt',
+            'orbit_data_finner.txt',
             format='ascii'
         )
         num_points = len(t_r_v['r0x'])
@@ -45,24 +44,12 @@ class OrbitAnimation(MovingCameraScene):
 
         self.play(self.camera.frame.animate.scale(7), run_time=2)
         
-
-        # zoom in very slowly after 2 seconds
-        #self.play(self.camera.frame.animate.scale(0.3), run_time = 35)
-
-        # attach the camera to the midpoint of the two moving dots
-        # Animate the ValueTracker from 0 to num_points - 1 over 10 seconds.
-        # Animate until the interaction which should be at 2000
-        # self.play(tracker.animate.set_value(num_points - 1), run_time=20, rate_func=linear)
-        # self.wait(2)
-
-        # self.play(self.camera.frame.animate.move_to(dot1))
-        # self.wait()
            # --- Section 1: Animate until the first N points ---
         N = 2000  # Change this value as needed (make sure N <= num_points)
         self.play(tracker.animate.set_value(N - 1), run_time=20, rate_func=linear)
-        self.wait(2)
+        #self.wait(2)
         
-        # --- Autozoom: Compute bounding box and zoom out to show all points ---
+        # --- Compute bounding box and zoom out to show all points ---
         # Combine all x and y data from the three orbits.
         all_x = np.concatenate([t_r_v['r0x'], t_r_v['r1x'], t_r_v['r2x']])
         all_y = np.concatenate([t_r_v['r0y'], t_r_v['r1y'], t_r_v['r2y']])
