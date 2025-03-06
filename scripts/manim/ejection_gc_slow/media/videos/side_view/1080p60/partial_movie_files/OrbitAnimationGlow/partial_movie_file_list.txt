@@ -1,0 +1,6 @@
+# This file is used internally by FFMPEG.
+file 'file:/Users/mncavieres/Documents/2024-2/HVS/scripts/manim/ejection_gc_slow/media/videos/side_view/1080p60/partial_movie_files/OrbitAnimationGlow/2857745830_4058569206_4018230590.mp4'
+file 'file:/Users/mncavieres/Documents/2024-2/HVS/scripts/manim/ejection_gc_slow/media/videos/side_view/1080p60/partial_movie_files/OrbitAnimationGlow/3895685656_1098004739_780157510.mp4'
+file 'file:/Users/mncavieres/Documents/2024-2/HVS/scripts/manim/ejection_gc_slow/media/videos/side_view/1080p60/partial_movie_files/OrbitAnimationGlow/3895685656_2160475638_13768043.mp4'
+file 'file:/Users/mncavieres/Documents/2024-2/HVS/scripts/manim/ejection_gc_slow/media/videos/side_view/1080p60/partial_movie_files/OrbitAnimationGlow/3895685656_175991909_45184083.mp4'
+file 'file:/Users/mncavieres/Documents/2024-2/HVS/scripts/manim/ejection_gc_slow/media/videos/side_view/1080p60/partial_movie_files/OrbitAnimationGlow/3895685656_2442810729_2889244329.mp4'
