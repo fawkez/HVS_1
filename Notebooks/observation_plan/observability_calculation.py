@@ -137,14 +137,15 @@ def check_observability_midnight(astropy_table, start_date, end_date, location=N
 # Example usage:
 if __name__ == '__main__':
     # Create a dummy astropy Table with sample sources.
-    table = Table.read('/Users/mncavieres/Documents/2024-2/HVS/Data/candidates/high_likelihood_candidates.dat', format='ascii')
-    table.rename_column('col1', 'name')
-    table.rename_column('col2', 'ra')
-    table.rename_column('col3', 'dec')
+    #table = Table.read('/Users/mncavieres/Documents/2024-2/HVS/Data/candidates/high_likelihood_candidates.dat', format='ascii')
+    #table.rename_column('col1', 'name')
+    #table.rename_column('col2', 'ra')
+    #table.rename_column('col3', 'dec')
+    table = Table.read('/Users/mncavieres/Documents/2024-2/HVS/Data/candidates/november/candidates_HL_purple_disk_south_nov.fits')
     
     # Define the date range.
-    start_date = '01-10-2025'
-    end_date = '28-04-2026'
+    start_date = '01-11-2025'
+    end_date = '30-11-2025'
 
     # Define the location to paranal for the current ESO call
     location_paranal = EarthLocation(lat=-24.627222222222*u.deg, lon=-70.404166666667*u.deg, height=2635*u.m)
@@ -156,4 +157,4 @@ if __name__ == '__main__':
     print(result_table)
 
     # save the table to a file
-    result_table.write('/Users/mncavieres/Documents/2024-2/HVS/Data/candidates/observability_results.fits', overwrite=True)
+    result_table.write('/Users/mncavieres/Documents/2024-2/HVS/Data/candidates/observability_results_purple_november.fits', overwrite=True)
