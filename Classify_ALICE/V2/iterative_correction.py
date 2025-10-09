@@ -525,7 +525,7 @@ def getdist_corrected(ra_rad, dec_rad, pmra_rad_s, pmdec_rad_s, Vz, l, b):
     return VGCR, VR, Darr
 
 # load the interpolator 
-with open('vz_rf_vr_sergey_v2_return0.pkl', 'rb') as f:
+with open('/Users/mncavieres/Documents/2024-2/HVS/Classify_ALICE/V2/vz_rf_vr_sergey_v2_return0.pkl', 'rb') as f:
 #with open('/Users/mncavieres/Documents/2024-2/HVS/Data/vz_interpolator/vz_rf_vr_sergey_extrapolate.pkl', 'rb') as f:
     interpolator_vz = pickle.load(f)
 
